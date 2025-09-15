@@ -1,12 +1,14 @@
 // Store the last selected text
 let lastSelectedText: string = '';
 
-self.addEventListener('install', () => {
-  (self as unknown as ServiceWorkerGlobalScope).skipWaiting();
+const sw = self as unknown as ServiceWorkerGlobalScope;
+
+sw.addEventListener('install', () => {
+  sw.skipWaiting();
 });
 
-self.addEventListener('activate', (event: ExtendableEvent) => {
-  event.waitUntil((self as unknown as ServiceWorkerGlobalScope).clients.claim());
+sw.addEventListener('activate', (event: ExtendableEvent) => {
+  event.waitUntil(sw.clients.claim());
 });
 
 // Listen for messages from content script
