@@ -1,6 +1,6 @@
 # PhraseBE (Chrome Extension)
 
-Minimal Manifest V3 Chrome extension that opens a popup with a textarea when the extension icon is clicked.
+Minimal Manifest V3 Chrome extension that opens a popup with a textarea when the extension icon is clicked. The extension automatically captures text selections made on web pages and displays them in the popup textarea.
 
 ## Install (Load Unpacked)
 
@@ -10,10 +10,18 @@ Minimal Manifest V3 Chrome extension that opens a popup with a textarea when the
 4. Click "Load unpacked" and select this folder: `phrasebe`.
 5. The extension icon will appear. Click it to open the popup.
 
+## How It Works
+
+1. **Text Selection**: Select any text on any webpage (mouse drag or keyboard selection)
+2. **Automatic Capture**: The content script detects the selection and sends it to the background script
+3. **Display in Popup**: When you click the extension icon, the popup automatically shows the selected text in the textarea
+4. **Multiple Selections**: Each new selection appends to the existing text in the textarea
+
 ## Debugging
 
 - Popup DevTools: Open popup → right-click inside → Inspect.
 - Background worker: `chrome://extensions/` → PhraseBE card → click "Service worker".
+- Content script: Use browser DevTools on any webpage → Console tab (content script logs appear here).
 - After file edits: On `chrome://extensions/`, click the circular Reload icon on the PhraseBE card, then reopen the popup.
 
 ## Build a Zip (no Node required)
@@ -46,6 +54,7 @@ If you have Node installed, you can compile TypeScript sources:
 - `src/popup.css`: Popup styles.
 - `src/popup.js`: Popup logic (generated from TS if you compile, otherwise hand-written).
 - `src/background.js`: Service worker (generated from TS if you compile, otherwise hand-written).
+- `src/content.js`: Content script (generated from TS if you compile, otherwise hand-written).
 - `src/ts/*`: TypeScript sources.
 - `build.sh`, `Makefile`: Build utilities to zip the extension.
 
