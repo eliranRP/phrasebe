@@ -28,25 +28,13 @@ Option B: Using the script directly
 1. Run `./build.sh`.
 2. Output: `dist/phrasebe.zip`.
 
-## TypeScript (optional)
-
-If you have Node installed, you can compile TypeScript sources:
-
-1. Install TypeScript globally or locally:
-   - Global: `npm i -g typescript`
-   - Local (in project): `npm i -D typescript`
-2. Sources live in `src/ts/`. Output JS goes to `src/` (to match manifest paths).
-3. Compile: `tsc -p tsconfig.json`.
-4. Load the extension from the project root (`phrasebe/`) or rebuild the zip as above.
-
 ## Files
 
 - `manifest.json`: Extension metadata and configuration.
 - `src/popup.html`: Popup UI.
 - `src/popup.css`: Popup styles.
-- `src/popup.js`: Popup logic (generated from TS if you compile, otherwise hand-written).
-- `src/background.js`: Service worker (generated from TS if you compile, otherwise hand-written).
-- `src/ts/*`: TypeScript sources.
+- `src/popup.js`: Popup logic.
+- `src/background.js`: Service worker (background script).
 - `build.sh`, `Makefile`: Build utilities to zip the extension.
 
 ## Next Steps (Google AI API)
@@ -57,5 +45,5 @@ If you have Node installed, you can compile TypeScript sources:
 
 ## Development
 
-- Without Node: edit files and reload the extension from `chrome://extensions/`.
-- With Node: compile TS via `tsc` and then reload or rebuild.
+- No build tooling is required.
+- Edit files and reload the extension from `chrome://extensions/`.

@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "PhraseBE",
+  "description": "Simple Chrome extension that opens a textarea popup for phrasing.",
+  "version": "0.1.0",
+  "action": {
+    "default_title": "PhraseBE",
+    "default_popup": "src/popup.html"
+  },
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "permissions": [],
+  "host_permissions": []
+}
