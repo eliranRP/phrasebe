@@ -4,17 +4,17 @@
   "description": "Simple Chrome extension that opens a textarea popup for phrasing.",
   "version": "0.1.0",
   "icons": {
-    "16": "src/assets/icons/bephrase_icon_16x16.png",
-    "32": "src/assets/icons/bephrase_icon_32x32.png",
-    "48": "src/assets/icons/bephrase_icon_48x48.png",
-    "128": "src/assets/icons/bephrase_icon_128x128.png"
+    "16": "src/assets/icons/bephrase_16.png",
+    "32": "src/assets/icons/bephrase_32.png",
+    "48": "src/assets/icons/bephrase_48.png",
+    "128": "src/assets/icons/bephrase_128.png"
   },
   "action": {
     "default_title": "PhraseBE",
     "default_popup": "src/popup.html",
     "default_icon": {
-      "16": "src/assets/icons/bephrase_icon_16x16.png",
-      "32": "src/assets/icons/bephrase_icon_32x32.png"
+      "16": "src/assets/icons/bephrase_16.png",
+      "32": "src/assets/icons/bephrase_32.png"
     }
   },
   "background": {
