@@ -1,0 +1,76 @@
+/* Floating Rephrase bubble */
+.phrasebe-bubble {
+  position: fixed;
+  z-index: 2147483647;
+  display: none;
+  padding: 6px 10px;
+  font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #064e3b;
+  background: #d1fae5;
+  border: 1px solid #10b981;
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  cursor: pointer;
+  user-select: none;
+}
+.phrasebe-bubble:hover { background: #a7f3d0; }
+
+/* Floating Chat panel */
+.phrasebe-chat {
+  position: fixed;
+  z-index: 2147483647;
+  display: none;
+  width: 320px;
+  max-height: 60vh;
+  background: #ffffff;
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.18);
+  overflow: hidden;
+}
+.phrasebe-chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: #f9fafb;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  font-size: 12px;
+  font-weight: 600;
+}
+.phrasebe-chat-body {
+  padding: 10px;
+}
+.phrasebe-chat-textarea {
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+  padding: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13px;
+}
+.phrasebe-chat-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px;
+  border-top: 1px solid rgba(0,0,0,0.06);
+  background: #fafafa;
+}
+.phrasebe-button {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  cursor: pointer;
+  font-size: 12px;
+}
+.phrasebe-button.primary {
+  background: #10b981;
+  color: #fff;
+  border-color: #10b981;
+}
