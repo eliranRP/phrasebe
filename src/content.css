@@ -824,6 +824,12 @@
   padding: 12px 16px;
   padding-right: 50px;
   /* Space for send button */
+  min-height: 24px;
+  max-height: 120px;
+  resize: none;
+  overflow-y: hidden;
+  box-sizing: border-box;
+  width: 100%;
 
   /* Styling */
   background: #f9f9f9;
@@ -833,12 +839,14 @@
   /* Typography */
   font-size: 14px;
   color: #333333;
+  font-family: inherit;
+  line-height: 1.4;
 
   /* Interaction */
   outline: none;
 
   /* Performance */
-  transition: all 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .whatsapp-input:focus {

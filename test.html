@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>WhatsApp-like Composer (HTML + CSS)</title>
+    <style>
+        :root {
+            --bg: #0e0f10;
+            --panel: #222527;
+            --ring: #4a9c5d;
+            --text: #ececec;
+            --muted: #a8adb3;
+            --send: #20c863;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100svh;
+            display: grid;
+            place-items: end center;
+            padding: 24px;
+            background: var(--bg);
+            color: var(--text);
+            font: 16px/1.35 system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif;
+        }
+
+        /* FOOTER BAR */
+        .bar {
+            width: min(1100px, 100%);
+            padding: 12px;
+        }
+
+        .composer {
+            display: flex;
+            align-items: flex-end;
+            /* keep button glued to the bottom */
+            gap: 12px;
+            background: var(--panel);
+            border-radius: 18px;
+            padding: 10px 10px 10px 14px;
+            outline: 1.5px solid rgba(255, 255, 255, .06);
+        }
+
+        /* LEFT ACTIONS (optional) */
+        .actions {
+            display: flex;
+            align-items: flex-end;
+            gap: 12px;
+        }
+
+        .btn-ghost {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            color: #d0d3d6;
+            background: #2a2e31;
+            border: 0;
+            cursor: pointer;
+        }
+
+        /* INPUT WRAPPER takes remaining space */
+        .input-wrap {
+            flex: 1 1 auto;
+            min-width: 0;
+            /* allow shrinking on narrow screens */
+            display: flex;
+            align-items: flex-end;
+        }
+
+        /* CONTENTEDITABLE that auto-grows naturally */
+        .input {
+            flex: 1 1 auto;
+            padding: 8px 10px;
+            min-height: 24px;
+            /* 1-line */
+            max-height: 180px;
+            /* <<< change cap here */
+            overflow-y: auto;
+            /* scroll past the cap */
+            border-radius: 10px;
+            white-space: pre-wrap;
+            word-break: break-word;
+            background: transparent;
+            color: var(--text);
+            outline: none;
+        }
+
+        .input:empty::before {
+            content: "Type a message…";
+            color: var(--muted);
+            pointer-events: none;
+        }
+
+        /* SEND BUTTON pinned to the right/bottom */
+        .send {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: 0;
+            background: var(--send);
+            color: #0a0a0a;
+            display: grid;
+            place-items: center;
+            cursor: pointer;
+            flex: 0 0 auto;
+        }
+
+        .send:active {
+            transform: translateY(1px);
+        }
+
+        .send svg {
+            width: 24px;
+            height: 24px;
+            display: block;
+        }
+
+        /* Mobile polish */
+        @media (max-width:560px) {
+            .btn-ghost {
+                width: 34px;
+                height: 34px;
+            }
+
+            .send {
+                width: 46px;
+                height: 46px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="bar">
+        <div class="composer">
+            <div class="actions">
+                <button class="btn-ghost" aria-label="Add">
+                    <!-- plus -->
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 5v14M5 12h14" />
+                    </svg>
+                </button>
+                <button class="btn-ghost" aria-label="Emoji">
+                    <!-- smile -->
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="9" />
+                        <path d="M8 14a4 4 0 0 0 8 0" />
+                        <path d="M9 9h.01M15 9h.01" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="input-wrap">
+                <!-- This grows until max-height, then scrolls -->
+                <div class="input" contenteditable="true" role="textbox" aria-multiline="true"></div>
+            </div>
+
+            <button class="send" aria-label="Send">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <path d="M22 2L11 13"></path>
+                    <path d="M22 2l-7 20-4-9-9-4 20-7z"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+</body>
+
+</html>
