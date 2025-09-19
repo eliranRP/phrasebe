@@ -139,14 +139,21 @@ const detectLanguage = async (text: string): Promise<{ language: string; directi
         console.log('Downloading language detection model...');
       }
 
-      // Create language detector
-      const detector = await LanguageDetector.create({
+      // Create language detector with timeout protection
+      const detectorPromise = LanguageDetector.create({
         monitor(m) {
           m.addEventListener('downloadprogress', (e) => {
             console.log(`Language model downloaded ${e.loaded * 100}%`);
           });
         },
       });
+
+      // Add timeout to prevent hanging during model download
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Language detection timeout')), 30000); // 30 second timeout
+      });
+
+      const detector = await Promise.race([detectorPromise, timeoutPromise]);
 
       // Detect language
       const results = await detector.detect(text);
@@ -719,8 +726,16 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
   // Auto-translate on text selection (show in box, don't replace text yet)
   const autoTranslate = async () => {
     try {
-      // Detect the language of the selected text
-      const { language: detectedLanguage } = await detectLanguage(selectedText);
+      // Detect the language of the selected text with fallback
+      let detectedLanguage: string;
+      try {
+        const detectionResult = await detectLanguage(selectedText);
+        detectedLanguage = detectionResult.language;
+      } catch (error) {
+        console.warn('Language detection failed, using fallback:', error);
+        // Fallback: assume English if detection fails
+        detectedLanguage = 'English';
+      }
 
       // Get user's preferred languages
       const userLanguages = await getUserLanguages();
@@ -836,8 +851,16 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
         const headerText = suggestionBox?.querySelector('.header-text') as HTMLElement;
         const currentText = headerText ? headerText.textContent || selectedText : selectedText;
 
-        const { language } = await detectLanguage(currentText);
-        const sourceLanguage = language;
+        // Detect language with fallback
+        let sourceLanguage: string;
+        try {
+          const detectionResult = await detectLanguage(currentText);
+          sourceLanguage = detectionResult.language;
+        } catch (error) {
+          console.warn('Language detection failed in dropdown change, using fallback:', error);
+          // Fallback: assume English if detection fails
+          sourceLanguage = 'English';
+        }
         const targetLanguageCode = languageSelect.value;
         const targetLanguageName = languageSelect.options[languageSelect.selectedIndex].text;
 
