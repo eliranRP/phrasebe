@@ -449,6 +449,7 @@ let dragOffset = { x: 0, y: 0 };
 let dragJustEnded = false;
 let lastSelectedText: string | null = null;
 let hasSelectionChanged = false;
+let originalDetectedLanguage: string | null = null;
 
 // Helper function to replace selected text
 const replaceSelectedText = (newText: string): void => {
@@ -767,6 +768,9 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
         detectedLanguage = 'English';
       }
 
+      // Store the original detected language for comparison
+      originalDetectedLanguage = detectedLanguage;
+
       // Get user's preferred languages
       const userLanguages = await getUserLanguages();
       const motherTongue = userLanguages.source;
@@ -859,6 +863,26 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
   // Language dropdown change event listener (auto-translate when language changes)
   if (languageSelect) {
     languageSelect.addEventListener('change', async () => {
+      const targetLanguageCode = languageSelect.value;
+      const targetLanguageName = languageSelect.options[languageSelect.selectedIndex].text;
+
+      // Check if the selected language is the same as the original detected language
+      if (originalDetectedLanguage && targetLanguageName.toLowerCase().includes(originalDetectedLanguage.toLowerCase())) {
+        console.log('Selected original language, showing original content:', originalDetectedLanguage);
+
+        // Show original content without translation
+        const headerContent = suggestionBox?.querySelector('.header-content') as HTMLElement;
+        if (suggestionBox && headerContent) {
+          const originalDirection = originalDetectedLanguage.toLowerCase().includes('hebrew') ||
+            originalDetectedLanguage.toLowerCase().includes('arabic') ? 'rtl' : 'ltr';
+          headerContent.innerHTML = `
+            <div class="header-title">Original Text (${originalDetectedLanguage})</div>
+            <div class="header-text" dir="${originalDirection}">${selectedText}</div>
+          `;
+        }
+        return; // Don't proceed with translation
+      }
+
       // Show loading state in the header
       const headerContent = suggestionBox?.querySelector('.header-content') as HTMLElement;
       if (headerContent) {
@@ -891,8 +915,6 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
           // Fallback: assume English if detection fails
           sourceLanguage = 'English';
         }
-        const targetLanguageCode = languageSelect.value;
-        const targetLanguageName = languageSelect.options[languageSelect.selectedIndex].text;
 
         console.log('Language dropdown translation request:', {
           currentText,
