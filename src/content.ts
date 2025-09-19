@@ -127,7 +127,7 @@ const positionBubbleAtCursor = (bubble: HTMLDivElement, element: HTMLElement): v
   const cursorPos = getCursorPosition(element);
   if (cursorPos) {
     bubble.style.left = (cursorPos.x + 10) + 'px';
-    bubble.style.top = (cursorPos.y + 15) + 'px';
+    bubble.style.top = (cursorPos.y + 30) + 'px';
   } else {
     // Fallback to element position
     const rect = element.getBoundingClientRect();
