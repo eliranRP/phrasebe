@@ -27,7 +27,6 @@ module.exports = {
             },
             {
                 test: /\.(png|jpe?g|gif|svg)$/i,
-                exclude: /src\/assets\/icons\/papaer_airplane\.png$/,
                 use: [
                     {
                         loader: 'file-loader',
@@ -63,7 +62,10 @@ module.exports = {
                     from: 'src/popup.css',
                     to: 'popup.css'
                 },
-                // Icons excluded in development build
+                {
+                    from: 'src/assets/icons/papaer_airplane.png',
+                    to: 'assets/icons/papaer_airplane.png'
+                }
             ]
         })
     ],

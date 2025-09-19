@@ -42,18 +42,148 @@ const createAISession = async (): Promise<LanguageModelSession> => {
   });
 };
 
-const processTextWithAI = async (text: string): Promise<string> => {
+const processTextWithAI = async (prompt: string, contextText?: string): Promise<string> => {
   try {
     const session = await createAISession();
 
-    const prompt = `Write a professional email based on these instructions: "${text}"`;
+    let fullPrompt: string;
+    if (contextText) {
+      fullPrompt = `Context text: "${contextText}"\n\nUser instruction: "${prompt}"\n\nProcess the context text according to the user instruction and return only the result.`;
+    } else {
+      fullPrompt = prompt;
+    }
 
-    const result = await session.prompt(prompt);
+    const result = await session.prompt(fullPrompt);
     session.destroy();
 
     return result.trim();
   } catch (error) {
-    return text; // Return original text if AI fails
+    return contextText || prompt; // Return original text if AI fails
+  }
+};
+
+const detectLanguage = async (text: string): Promise<{ language: string; direction: 'ltr' | 'rtl' }> => {
+  try {
+    // Check if Language Detector API is available
+    if ('LanguageDetector' in self) {
+      // Check availability
+      const availability = await LanguageDetector.availability();
+
+      if (availability === 'downloadable') {
+        // Model needs to be downloaded
+        console.log('Downloading language detection model...');
+      }
+
+      // Create language detector
+      const detector = await LanguageDetector.create({
+        monitor(m) {
+          m.addEventListener('downloadprogress', (e) => {
+            console.log(`Language model downloaded ${e.loaded * 100}%`);
+          });
+        },
+      });
+
+      // Detect language
+      const results = await detector.detect(text);
+
+      if (results.length > 0) {
+        const topResult = results[0];
+        const detectedLanguage = topResult.detectedLanguage;
+        const confidence = topResult.confidence;
+
+        // Only use result if confidence is high enough
+        if (confidence > 0.5) {
+          // Determine text direction based on detected language
+          const rtlLanguages = ['ar', 'he', 'fa', 'ur', 'yi']; // Arabic, Hebrew, Persian, Urdu, Yiddish
+          const direction = rtlLanguages.includes(detectedLanguage) ? 'rtl' : 'ltr';
+
+          // Map language codes to readable names
+          const languageNames: { [key: string]: string } = {
+            'en': 'English',
+            'he': 'Hebrew',
+            'ar': 'Arabic',
+            'fa': 'Persian',
+            'ur': 'Urdu',
+            'yi': 'Yiddish',
+            'de': 'German',
+            'fr': 'French',
+            'es': 'Spanish',
+            'it': 'Italian',
+            'pt': 'Portuguese',
+            'ru': 'Russian',
+            'zh': 'Chinese',
+            'ja': 'Japanese',
+            'ko': 'Korean',
+            'hi': 'Hindi',
+            'th': 'Thai',
+            'vi': 'Vietnamese',
+            'nl': 'Dutch',
+            'sv': 'Swedish',
+            'no': 'Norwegian',
+            'da': 'Danish',
+            'fi': 'Finnish',
+            'pl': 'Polish',
+            'tr': 'Turkish',
+            'cs': 'Czech',
+            'sk': 'Slovak',
+            'hu': 'Hungarian',
+            'ro': 'Romanian',
+            'bg': 'Bulgarian',
+            'hr': 'Croatian',
+            'sr': 'Serbian',
+            'sl': 'Slovenian',
+            'et': 'Estonian',
+            'lv': 'Latvian',
+            'lt': 'Lithuanian',
+            'uk': 'Ukrainian',
+            'be': 'Belarusian',
+            'mk': 'Macedonian',
+            'sq': 'Albanian',
+            'mt': 'Maltese',
+            'is': 'Icelandic',
+            'ga': 'Irish',
+            'cy': 'Welsh',
+            'eu': 'Basque',
+            'ca': 'Catalan',
+            'gl': 'Galician'
+          };
+
+          const languageName = languageNames[detectedLanguage] || detectedLanguage.toUpperCase();
+
+          return { language: languageName, direction };
+        }
+      }
+    }
+
+    // Fallback: simple heuristic detection
+    const hebrewRegex = /[\u0590-\u05FF]/;
+    const arabicRegex = /[\u0600-\u06FF]/;
+
+    if (hebrewRegex.test(text)) {
+      return { language: 'Hebrew', direction: 'rtl' };
+    }
+
+    if (arabicRegex.test(text)) {
+      return { language: 'Arabic', direction: 'rtl' };
+    }
+
+    return { language: 'English', direction: 'ltr' };
+  } catch (error) {
+    console.log('Language detection failed, using fallback:', error);
+
+    // Fallback: simple heuristic detection
+    const hebrewRegex = /[\u0590-\u05FF]/;
+    const arabicRegex = /[\u0600-\u06FF]/;
+
+    if (hebrewRegex.test(text)) {
+      return { language: 'Hebrew', direction: 'rtl' };
+    }
+
+    if (arabicRegex.test(text)) {
+      return { language: 'Arabic', direction: 'rtl' };
+    }
+
+    return { language: 'English', direction: 'ltr' };
   }
 };
 
@@ -239,10 +369,662 @@ const isBubbleEnabled = async (): Promise<boolean> => {
 };
 
 
+// Text Selection Feature
+let selectionTimeout: NodeJS.Timeout | null = null;
+let suggestionBox: HTMLDivElement | null = null;
+let isDragging = false;
+let dragOffset = { x: 0, y: 0 };
+let dragJustEnded = false;
+
+// Helper function to replace selected text
+const replaceSelectedText = (newText: string): void => {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) return;
+
+  const range = selection.getRangeAt(0);
+  range.deleteContents();
+  range.insertNode(document.createTextNode(newText));
+
+  // Clear selection
+  selection.removeAllRanges();
+};
+
+// Helper function to translate text using Chrome Translator API
+const translateText = async (text: string, sourceLanguage: string, targetLanguage: string): Promise<string> => {
+  // Check if Translator API is available
+  if (!('Translator' in self)) {
+    throw new Error('Translator API is not available');
+  }
+
+  // Convert language names to BCP 47 codes
+  const sourceLanguageCode = getLanguageCode(sourceLanguage);
+  const targetLanguageCode = getLanguageCode(targetLanguage);
+
+  console.log('Language conversion:', {
+    sourceLanguage,
+    sourceLanguageCode,
+    targetLanguage,
+    targetLanguageCode
+  });
+
+  // Check availability for specific language pair
+  const translatorCapabilities = await Translator.availability({
+    sourceLanguage: sourceLanguageCode,
+    targetLanguage: targetLanguageCode,
+  });
+
+  if (translatorCapabilities === 'downloadable') {
+    console.log('Downloading translation model...');
+  }
+
+  // Create translator instance with specific language pair
+  const translator = await Translator.create({
+    sourceLanguage: sourceLanguageCode,
+    targetLanguage: targetLanguageCode,
+    monitor(m) {
+      m.addEventListener('downloadprogress', (e) => {
+        console.log(`Downloaded ${e.loaded * 100}%`);
+      });
+    },
+  });
+
+  // Translate text
+  const translatedText = await translator.translate(text);
+
+  return translatedText;
+};
+
+// Helper function to convert language names to BCP 47 codes
+const getLanguageCode = (language: string): string => {
+  const lang = language.toLowerCase();
+
+  if (lang.includes('hebrew')) return 'he';
+  if (lang.includes('spanish')) return 'es';
+  if (lang.includes('french')) return 'fr';
+  if (lang.includes('german')) return 'de';
+  if (lang.includes('italian')) return 'it';
+  if (lang.includes('portuguese')) return 'pt';
+  if (lang.includes('russian')) return 'ru';
+  if (lang.includes('japanese')) return 'ja';
+  if (lang.includes('korean')) return 'ko';
+  if (lang.includes('chinese')) return 'zh';
+  if (lang.includes('arabic')) return 'ar';
+  if (lang.includes('english')) return 'en';
+
+  // Default fallback
+  return 'en';
+};
+
+const createSuggestionBox = async (selectedText: string, position: { x: number; y: number }): Promise<HTMLDivElement> => {
+  const box = document.createElement('div');
+  box.className = 'phrasebe-suggestion-box';
+
+  // Detect language and direction
+  const { language, direction } = await detectLanguage(selectedText);
+
+  // Determine translation target based on detected language
+  const translationTarget = language.toLowerCase().includes('english') ? 'Hebrew' : 'English (American)';
+
+  box.innerHTML = `
+    <div class="suggestion-header">
+      <div class="header-drag-handle"></div>
+      <div class="header-accent"></div>
+      <div class="header-content">
+        <div class="header-title">Translation</div>
+        <div class="skeleton-loader">
+          <div class="skeleton-line short"></div>
+          <div class="skeleton-line medium"></div>
+          <div class="skeleton-line long"></div>
+        </div>
+      </div>
+      <button class="close-btn">×</button>
+    </div>
+    <div class="suggestion-content">
+      <div class="action-buttons">
+        <button class="copy-btn" title="Copy translation">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" fill="currentColor"/>
+          </svg>
+        </button>
+      </div>
+      <div class="language-dropdown">
+        <select class="language-select">
+          <option value="en">English (American)</option>
+          <option value="he">Hebrew</option>
+          <option value="es">Spanish</option>
+          <option value="fr">French</option>
+          <option value="de">German</option>
+          <option value="it">Italian</option>
+          <option value="pt">Portuguese</option>
+          <option value="ru">Russian</option>
+          <option value="ja">Japanese</option>
+          <option value="ko">Korean</option>
+          <option value="zh">Chinese</option>
+          <option value="ar">Arabic</option>
+        </select>
+      </div>
+    </div>
+    <div class="suggestion-actions">
+      <div class="whatsapp-input-container">
+        <input type="text" placeholder="Enter your own prompt" class="whatsapp-input">
+        <button class="whatsapp-send-btn" title="Send prompt" style="display: none;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M1.101 21.757L23.8 12.028 1.101 2.3l.011 7.912 13.623 1.816-13.623 1.817-.011 7.912z" fill="currentColor"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  `;
+
+  // Position the box based on text direction
+  const boxWidth = 350; // Approximate width of the box
+  let leftPosition: number;
+
+  if (direction === 'rtl') {
+    // For RTL languages, position to the right of the selection
+    leftPosition = Math.min(window.innerWidth - boxWidth - 10, position.x + 20);
+  } else {
+    // For LTR languages, position to the left of the selection
+    leftPosition = Math.max(10, position.x - boxWidth - 20);
+  }
+
+  box.style.position = 'fixed';
+  box.style.left = leftPosition + 'px';
+  box.style.top = position.y + 'px';
+  box.style.zIndex = '10000';
+
+  return box;
+};
+
+const showSuggestionBox = async (selectedText: string): Promise<void> => {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) return;
+
+  const range = selection.getRangeAt(0);
+  const rect = range.getBoundingClientRect();
+
+  // Remove existing suggestion box
+  if (suggestionBox) {
+    suggestionBox.remove();
+  }
+
+  // Create and show new suggestion box
+  suggestionBox = await createSuggestionBox(selectedText, {
+    x: rect.left,
+    y: rect.top
+  });
+
+  document.body.appendChild(suggestionBox);
+
+  // Add drag functionality
+  const dragHandle = suggestionBox.querySelector('.header-drag-handle') as HTMLElement;
+  const header = suggestionBox.querySelector('.suggestion-header') as HTMLElement;
+
+  const startDrag = (e: MouseEvent): void => {
+    isDragging = true;
+    const rect = suggestionBox!.getBoundingClientRect();
+    dragOffset.x = e.clientX - rect.left;
+    dragOffset.y = e.clientY - rect.top;
+
+    document.addEventListener('mousemove', drag);
+    document.addEventListener('mouseup', stopDrag);
+    window.addEventListener('mouseup', stopDrag); // Also listen on window
+
+    // Prevent text selection during drag
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Disable text selection on the document during drag
+    document.body.style.userSelect = 'none';
+  };
+
+  const drag = (e: MouseEvent): void => {
+    if (!isDragging || !suggestionBox) return;
+
+    const newX = e.clientX - dragOffset.x;
+    const newY = e.clientY - dragOffset.y;
+
+    // Keep box within viewport bounds
+    const maxX = window.innerWidth - suggestionBox.offsetWidth;
+    const maxY = window.innerHeight - suggestionBox.offsetHeight;
+
+    suggestionBox.style.left = Math.max(0, Math.min(newX, maxX)) + 'px';
+    suggestionBox.style.top = Math.max(0, Math.min(newY, maxY)) + 'px';
+  };
+
+  const stopDrag = (): void => {
+    isDragging = false;
+    dragJustEnded = true;
+    document.removeEventListener('mousemove', drag);
+    document.removeEventListener('mouseup', stopDrag);
+    window.removeEventListener('mouseup', stopDrag); // Remove window listener too
+
+    // Re-enable text selection
+    document.body.style.userSelect = '';
+
+    // Reset the flag after a short delay
+    setTimeout(() => {
+      dragJustEnded = false;
+    }, 100);
+  };
+
+  // Add drag event listeners
+  if (dragHandle) {
+    dragHandle.addEventListener('mousedown', startDrag);
+  }
+  if (header) {
+    header.addEventListener('mousedown', startDrag);
+  }
+
+  // Prevent mouseup events on the suggestion box from triggering text selection
+  // But allow drag stop to work
+  suggestionBox.addEventListener('mouseup', (e) => {
+    // Only stop propagation if we're not dragging
+    if (!isDragging) {
+      e.stopPropagation();
+    }
+  });
+
+  // Auto-translate on text selection (show in box, don't replace text yet)
+  const autoTranslate = async () => {
+    try {
+      const { language } = await detectLanguage(selectedText);
+      const sourceLanguage = language;
+      const targetLanguage = language.toLowerCase().includes('english') ? 'Hebrew' : 'English (American)';
+      const translatedText = await translateText(selectedText, sourceLanguage, targetLanguage);
+
+      // Determine direction based on the output language (translated text)
+      const outputDirection = targetLanguage.toLowerCase().includes('hebrew') ? 'rtl' : 'ltr';
+
+      // Update the suggestion box content with the translation
+      if (suggestionBox) {
+        // Replace skeleton loader with actual translation
+        const headerContent = suggestionBox.querySelector('.header-content') as HTMLElement;
+        if (headerContent) {
+          headerContent.innerHTML = `
+            <div class="header-title">Translation</div>
+            <div class="header-text" dir="${outputDirection}">${translatedText}</div>
+          `;
+        }
+
+        // Translation is ready (no button needed since it's automatic)
+
+        // Set the default language in dropdown
+        const languageSelect = suggestionBox.querySelector('.language-select') as HTMLSelectElement;
+        if (languageSelect) {
+          const targetLanguageCode = targetLanguage.toLowerCase().includes('hebrew') ? 'he' : 'en';
+          languageSelect.value = targetLanguageCode;
+        }
+      }
+    } catch (error) {
+      console.error('Auto-translation failed:', error);
+      // Show error state
+      if (suggestionBox) {
+        // Replace skeleton with error message
+        const headerContent = suggestionBox.querySelector('.header-content') as HTMLElement;
+        if (headerContent) {
+          headerContent.innerHTML = `
+            <div class="header-title">Translation Failed</div>
+            <div class="header-text">Unable to translate the selected text</div>
+          `;
+        }
+
+        // Error state shown in header (no button needed)
+      }
+    }
+  };
+
+  // Start auto-translation in background
+  autoTranslate();
+
+  // Add event listeners
+  const languageSelect = suggestionBox.querySelector('.language-select') as HTMLSelectElement;
+  const customInput = suggestionBox.querySelector('.custom-input') as HTMLInputElement;
+
+  // Language dropdown change event listener (auto-translate when language changes)
+  if (languageSelect) {
+    languageSelect.addEventListener('change', async () => {
+      // Show loading state in the header
+      const headerContent = suggestionBox?.querySelector('.header-content') as HTMLElement;
+      if (headerContent) {
+        headerContent.innerHTML = `
+          <div class="header-title">Translation</div>
+          <div class="skeleton-loader">
+            <div class="skeleton-line short"></div>
+            <div class="skeleton-line medium"></div>
+            <div class="skeleton-line long"></div>
+          </div>
+        `;
+      }
+
+      // Disable dropdown during translation
+      languageSelect.disabled = true;
+      languageSelect.style.opacity = '0.7';
+
+      try {
+        const { language } = await detectLanguage(selectedText);
+        const sourceLanguage = language;
+        const targetLanguageCode = languageSelect.value;
+        const targetLanguageName = languageSelect.options[languageSelect.selectedIndex].text;
+
+        console.log('Auto-translation request:', {
+          selectedText,
+          sourceLanguage,
+          targetLanguageCode,
+          targetLanguageName
+        });
+
+        const translatedText = await translateText(selectedText, sourceLanguage, targetLanguageName);
+
+        // Update the suggestion box with new translation
+        if (suggestionBox && headerContent) {
+          const outputDirection = targetLanguageCode === 'he' || targetLanguageCode === 'ar' ? 'rtl' : 'ltr';
+          headerContent.innerHTML = `
+            <div class="header-title">Translation</div>
+            <div class="header-text" dir="${outputDirection}">${translatedText}</div>
+          `;
+        }
+
+        // Restore dropdown state
+        languageSelect.disabled = false;
+        languageSelect.style.opacity = '1';
+      } catch (error) {
+        console.error('Auto-translation failed:', error);
+
+        // Show error state
+        if (suggestionBox && headerContent) {
+          headerContent.innerHTML = `
+            <div class="header-title">Translation Failed</div>
+            <div class="header-text">Unable to translate the selected text</div>
+          `;
+        }
+
+        // Restore dropdown state
+        languageSelect.disabled = false;
+        languageSelect.style.opacity = '1';
+      }
+    });
+  }
+
+  // Copy button event listener
+  const copyBtn = suggestionBox?.querySelector('.copy-btn') as HTMLButtonElement;
+  if (copyBtn) {
+    copyBtn.addEventListener('click', async () => {
+      const headerText = suggestionBox?.querySelector('.header-text') as HTMLElement;
+      const textToCopy = headerText ? headerText.textContent || '' : '';
+
+      if (!textToCopy.trim()) {
+        console.log('No text to copy');
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(textToCopy);
+
+        // Show feedback
+        const originalContent = copyBtn.innerHTML;
+        copyBtn.innerHTML = `
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/>
+          </svg>
+        `;
+        copyBtn.style.background = '#10b981';
+
+        // Restore after 2 seconds
+        setTimeout(() => {
+          copyBtn.innerHTML = originalContent;
+          copyBtn.style.background = '';
+        }, 2000);
+
+        console.log('Text copied to clipboard:', textToCopy);
+      } catch (error) {
+        console.error('Failed to copy text:', error);
+
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = textToCopy;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+
+        // Show feedback
+        const originalContent = copyBtn.innerHTML;
+        copyBtn.innerHTML = `
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/>
+          </svg>
+        `;
+        copyBtn.style.background = '#10b981';
+
+        setTimeout(() => {
+          copyBtn.innerHTML = originalContent;
+          copyBtn.style.background = '';
+        }, 2000);
+      }
+    });
+  }
+
+  // WhatsApp input event listener
+  const whatsappInput = suggestionBox?.querySelector('.whatsapp-input') as HTMLInputElement;
+  const whatsappSendBtn = suggestionBox?.querySelector('.whatsapp-send-btn') as HTMLButtonElement;
+
+  if (whatsappInput) {
+    // Show/hide send button based on input content
+    const toggleSendButton = () => {
+      if (whatsappSendBtn) {
+        if (whatsappInput.value.trim().length > 0) {
+          whatsappSendBtn.style.display = 'flex';
+        } else {
+          whatsappSendBtn.style.display = 'none';
+        }
+      }
+    };
+
+    // Handle input changes
+    whatsappInput.addEventListener('input', toggleSendButton);
+    whatsappInput.addEventListener('keyup', toggleSendButton);
+
+    const handleCustomPrompt = async () => {
+      const customPrompt = whatsappInput.value.trim();
+      if (!customPrompt) return;
+
+      // Get the current translated text from the suggestion box
+      const headerText = suggestionBox?.querySelector('.header-text') as HTMLElement;
+      const translatedText = headerText ? headerText.textContent || '' : selectedText;
+
+      // Show loading state
+      const originalPlaceholder = whatsappInput.placeholder;
+      whatsappInput.placeholder = 'Processing...';
+      whatsappInput.disabled = true;
+      if (whatsappSendBtn) {
+        whatsappSendBtn.disabled = true;
+        whatsappSendBtn.style.opacity = '0.6';
+        whatsappSendBtn.classList.add('loading'); // Add green border animation
+      }
+
+      try {
+        console.log('Custom prompt request:', {
+          customPrompt,
+          translatedText,
+          selectedText
+        });
+
+        const aiResponse = await processTextWithAI(customPrompt, translatedText);
+
+        // Update the suggestion box with the AI response
+        if (suggestionBox && headerText) {
+          headerText.textContent = aiResponse;
+          // Clear the input
+          whatsappInput.value = '';
+          toggleSendButton(); // Hide send button
+        }
+      } catch (error) {
+        console.error('AI processing failed:', error);
+        // Show error in the suggestion box
+        if (suggestionBox && headerText) {
+          headerText.textContent = 'Error processing your request. Please try again.';
+        }
+      } finally {
+        // Restore input state
+        whatsappInput.placeholder = originalPlaceholder;
+        whatsappInput.disabled = false;
+        if (whatsappSendBtn) {
+          whatsappSendBtn.disabled = false;
+          whatsappSendBtn.style.opacity = '1';
+          whatsappSendBtn.classList.remove('loading'); // Remove green border animation
+        }
+      }
+    };
+
+    // Handle Enter key in input
+    whatsappInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        handleCustomPrompt();
+      }
+    });
+  }
+
+  // WhatsApp send button event listener
+  if (whatsappSendBtn) {
+    whatsappSendBtn.addEventListener('click', async () => {
+      const customPrompt = whatsappInput?.value.trim();
+      if (!customPrompt) return;
+
+      // Get the current translated text from the suggestion box
+      const headerText = suggestionBox?.querySelector('.header-text') as HTMLElement;
+      const translatedText = headerText ? headerText.textContent || '' : selectedText;
+
+      // Show loading state with green border animation
+      const originalContent = whatsappSendBtn.innerHTML;
+      whatsappSendBtn.innerHTML = '<div class="loading-spinner"></div>';
+      whatsappSendBtn.disabled = true;
+      whatsappSendBtn.style.opacity = '0.6';
+      whatsappSendBtn.classList.add('loading'); // Add green border animation
+      if (whatsappInput) {
+        whatsappInput.disabled = true;
+      }
+
+      try {
+        console.log('WhatsApp send button prompt request:', {
+          customPrompt,
+          translatedText,
+          selectedText
+        });
+
+        const aiResponse = await processTextWithAI(customPrompt, translatedText);
+
+        // Update the suggestion box with the AI response
+        if (suggestionBox && headerText) {
+          headerText.textContent = aiResponse;
+          // Clear the input
+          if (whatsappInput) {
+            whatsappInput.value = '';
+            whatsappSendBtn.style.display = 'none'; // Hide send button
+          }
+        }
+      } catch (error) {
+        console.error('AI processing failed:', error);
+        // Show error in the suggestion box
+        if (suggestionBox && headerText) {
+          headerText.textContent = 'Error processing your request. Please try again.';
+        }
+      } finally {
+        // Restore button state
+        whatsappSendBtn.innerHTML = originalContent;
+        whatsappSendBtn.disabled = false;
+        whatsappSendBtn.style.opacity = '1';
+        whatsappSendBtn.classList.remove('loading'); // Remove green border animation
+        if (whatsappInput) {
+          whatsappInput.disabled = false;
+        }
+      }
+    });
+  }
+
+  // Add close button event listener
+  const closeBtn = suggestionBox.querySelector('.close-btn') as HTMLButtonElement;
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      hideSuggestionBox();
+    });
+  }
+
+  // Hide suggestion box when clicking outside
+  document.addEventListener('click', (e) => {
+    if (suggestionBox && !suggestionBox.contains(e.target as Node)) {
+      hideSuggestionBox();
+    }
+  }, { once: true });
+};
+
+const hideSuggestionBox = (): void => {
+  if (suggestionBox) {
+    suggestionBox.remove();
+    suggestionBox = null;
+  }
+
+  // Reset drag state
+  isDragging = false;
+  dragJustEnded = false;
+  document.body.style.userSelect = '';
+};
+
+const handleTextSelection = (): void => {
+  // Don't handle text selection if we're currently dragging or just finished dragging
+  if (isDragging || dragJustEnded) {
+    return;
+  }
+
+  // Don't hide the suggestion box if user is interacting with it
+  if (suggestionBox && document.body.contains(suggestionBox)) {
+    // Check if the mouse is over the suggestion box or if an input is focused
+    const activeElement = document.activeElement;
+    if (activeElement && suggestionBox.contains(activeElement)) {
+      return; // User is interacting with the suggestion box
+    }
+
+    // Check if mouse is over the suggestion box
+    const mouseOverBox = suggestionBox.matches(':hover') ||
+      (suggestionBox.querySelector(':hover') !== null);
+    if (mouseOverBox) {
+      return; // Mouse is over the suggestion box
+    }
+  }
+
+  const selection = window.getSelection();
+  if (!selection || selection.toString().trim().length === 0) {
+    hideSuggestionBox();
+    return;
+  }
+
+  const selectedText = selection.toString().trim();
+  if (selectedText.length === 0) return;
+
+  // Don't recreate the box if it already exists and user is interacting with it
+  if (suggestionBox && document.body.contains(suggestionBox)) {
+    return;
+  }
+
+  // Clear existing timeout
+  if (selectionTimeout) {
+    clearTimeout(selectionTimeout);
+  }
+
+  // Set 1-second delay
+  selectionTimeout = setTimeout(async () => {
+    await showSuggestionBox(selectedText);
+  }, 1000);
+};
+
 // Initialize extension
 const initializeExtension = async (): Promise<void> => {
+  // Add text selection listener for all websites
+  document.addEventListener('mouseup', handleTextSelection);
+  document.addEventListener('keyup', handleTextSelection);
+
   if (!isGmail()) {
-    return; // Only work in Gmail
+    return; // Only work in Gmail for bubble feature
   }
 
   const bubble = createBubble();
