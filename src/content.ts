@@ -993,13 +993,28 @@ const handleTextSelection = (): void => {
   }
 
   const selection = window.getSelection();
+
+  // If no selection or empty selection, hide box and clear timeout
   if (!selection || selection.toString().trim().length === 0) {
+    // Clear any pending timeout
+    if (selectionTimeout) {
+      clearTimeout(selectionTimeout);
+      selectionTimeout = null;
+    }
     hideSuggestionBox();
     return;
   }
 
   const selectedText = selection.toString().trim();
-  if (selectedText.length === 0) return;
+  if (selectedText.length === 0) {
+    // Clear any pending timeout
+    if (selectionTimeout) {
+      clearTimeout(selectionTimeout);
+      selectionTimeout = null;
+    }
+    hideSuggestionBox();
+    return;
+  }
 
   // Don't recreate the box if it already exists and user is interacting with it
   if (suggestionBox && document.body.contains(suggestionBox)) {
@@ -1011,10 +1026,16 @@ const handleTextSelection = (): void => {
     clearTimeout(selectionTimeout);
   }
 
-  // Set 1-second delay
+  // Set 2.5-second delay
   selectionTimeout = setTimeout(async () => {
+    // Double-check that selection still exists and hasn't been cleared
+    const currentSelection = window.getSelection();
+    if (!currentSelection || currentSelection.toString().trim().length === 0) {
+      return; // Selection was cleared, don't show box
+    }
+
     await showSuggestionBox(selectedText);
-  }, 1000);
+  }, 2500);
 };
 
 // Initialize extension
@@ -1022,6 +1043,36 @@ const initializeExtension = async (): Promise<void> => {
   // Add text selection listener for all websites
   document.addEventListener('mouseup', handleTextSelection);
   document.addEventListener('keyup', handleTextSelection);
+
+  // Add additional listeners for better text selection handling
+  document.addEventListener('input', handleTextSelection); // Handle text deletion/typing
+  document.addEventListener('selectionchange', handleTextSelection); // Handle selection changes
+
+  // Enhanced keyboard selection handling
+  document.addEventListener('keydown', (e) => {
+    // Handle keyboard selection commands
+    const isSelectionKey = e.key === 'ArrowLeft' || e.key === 'ArrowRight' ||
+      e.key === 'ArrowUp' || e.key === 'ArrowDown' ||
+      e.key === 'Home' || e.key === 'End' ||
+      e.key === 'PageUp' || e.key === 'PageDown';
+
+    // Handle Ctrl+A (Select All) and other selection shortcuts
+    const isSelectAll = e.ctrlKey && e.key === 'a';
+
+    // Handle Ctrl+Shift+Arrow (Word selection)
+    const isWordSelection = e.ctrlKey && e.shiftKey &&
+      (e.key === 'ArrowLeft' || e.key === 'ArrowRight');
+
+    // Handle Shift+Home/End (Line selection)
+    const isLineSelection = e.shiftKey && (e.key === 'Home' || e.key === 'End');
+
+    if ((isSelectionKey && e.shiftKey) || isSelectAll || isWordSelection || isLineSelection) {
+      // Small delay to allow selection to complete
+      setTimeout(() => {
+        handleTextSelection();
+      }, 10);
+    }
+  });
 
   if (!isGmail()) {
     return; // Only work in Gmail for bubble feature
