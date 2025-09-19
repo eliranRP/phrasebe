@@ -1,149 +1,60 @@
-// Functional Popup Script for PhraseBE Chrome Extension
+// PhraseBE Popup Script - Organized Grammarly Design
 
-// Type definitions
-interface GetSelectedTextMessage {
-  type: 'getSelectedText';
-}
-
-interface SelectedTextResponse {
-  selectedText: string;
-}
-
-interface DiagnosticMessage {
-  type: 'runDiagnostic';
-}
-
-interface DiagnosticResponse {
-  success: boolean;
-  results: string[];
-  error?: string;
-}
-
-// Constants
-const POPUP_CONSTANTS = {
-  ELEMENT_IDS: {
-    INPUT: 'input',
-    CLEAR: 'clear',
-    RUN_DIAGNOSTIC: 'runDiagnostic',
-    DIAGNOSTIC_RESULTS: 'diagnosticResults',
-  },
-  MESSAGE_TYPES: {
-    GET_SELECTED_TEXT: 'getSelectedText',
-    RUN_DIAGNOSTIC: 'runDiagnostic',
-  },
+// Storage keys
+const STORAGE_KEYS = {
+  BUBBLE_ENABLED: 'phrasebe_bubble_enabled',
 } as const;
 
-// DOM element references
-let textarea: HTMLTextAreaElement | null = null;
-let clearButton: HTMLButtonElement | null = null;
-let diagnosticButton: HTMLButtonElement | null = null;
-let diagnosticResults: HTMLDivElement | null = null;
+// Initialize popup
+const initializePopup = (): void => {
+  // Load saved settings
+  loadSettings();
 
-// Element initialization
-const initializeElements = (): void => {
-  textarea = document.getElementById(POPUP_CONSTANTS.ELEMENT_IDS.INPUT) as HTMLTextAreaElement;
-  clearButton = document.getElementById(POPUP_CONSTANTS.ELEMENT_IDS.CLEAR) as HTMLButtonElement;
-  diagnosticButton = document.getElementById(POPUP_CONSTANTS.ELEMENT_IDS.RUN_DIAGNOSTIC) as HTMLButtonElement;
-  diagnosticResults = document.getElementById(POPUP_CONSTANTS.ELEMENT_IDS.DIAGNOSTIC_RESULTS) as HTMLDivElement;
+  // Setup event listeners
+  setupEventListeners();
 };
 
-// Event handlers
-const handleClearClick = (): void => {
-  if (textarea) {
-    textarea.value = '';
-    textarea.focus();
-  }
-};
-
-const handleDiagnosticClick = (): void => {
-  if (diagnosticResults) {
-    diagnosticResults.innerHTML = '<div class="status info">Running diagnostic...</div>';
-  }
-  
-  chrome.runtime.sendMessage({ type: 'runDiagnostic' }, (response: DiagnosticResponse) => {
-    displayDiagnosticResults(response);
-  });
-};
-
-// UI functions
-const displayDiagnosticResults = (response: DiagnosticResponse): void => {
-  if (!diagnosticResults) return;
-
-  if (!response) {
-    diagnosticResults.innerHTML = '<div class="status error">No response received</div>';
-    return;
-  }
-
-  let html = '';
-  for (const result of response.results) {
-    let className = 'status info';
-    if (result.includes('✅')) className = 'status success';
-    else if (result.includes('❌')) className = 'status error';
-    else if (result.includes('⚠️') || result.includes('💡')) className = 'status warning';
-    
-    html += `<div class="${className}">${result}</div>`;
-  }
-
-  diagnosticResults.innerHTML = html;
-};
-
-const appendText = (text: string): void => {
-  if (!textarea || !text.trim()) {
-    return;
-  }
-
-  const currentText = textarea.value || '';
-  const newText = currentText ? `${currentText}\n\n${text}` : text;
-  textarea.value = newText;
-  textarea.focus();
-};
-
-// Message handling
-const sendMessage = (message: GetSelectedTextMessage): Promise<SelectedTextResponse | undefined> => {
-  return new Promise((resolve) => {
-    chrome.runtime.sendMessage(message, (response: SelectedTextResponse | undefined) => {
-      resolve(response);
-    });
-  });
-};
-
-const getSelectedText = async (): Promise<void> => {
+// Load settings from storage
+const loadSettings = async (): Promise<void> => {
   try {
-    const message: GetSelectedTextMessage = { 
-      type: POPUP_CONSTANTS.MESSAGE_TYPES.GET_SELECTED_TEXT 
-    };
+    const result = await chrome.storage.sync.get([
+      STORAGE_KEYS.BUBBLE_ENABLED,
+    ]);
 
-    const response = await sendMessage(message);
-    
-    if (response?.selectedText) {
-      appendText(response.selectedText);
+    // Set bubble toggle
+    const bubbleToggle = document.getElementById('bubbleToggle') as HTMLInputElement;
+    if (bubbleToggle) {
+      bubbleToggle.checked = result[STORAGE_KEYS.BUBBLE_ENABLED] !== false; // Default to true
     }
   } catch (error) {
-    // Silently handle errors to prevent extension crashes
+    // Handle error silently
   }
 };
 
-// Event listener setup
+// Save settings to storage
+const saveSettings = async (key: string, value: boolean): Promise<void> => {
+  try {
+    await chrome.storage.sync.set({ [key]: value });
+  } catch (error) {
+    // Handle error silently
+  }
+};
+
+// Setup event listeners
 const setupEventListeners = (): void => {
-  if (clearButton) {
-    clearButton.addEventListener('click', handleClearClick);
-  }
-  
-  if (diagnosticButton) {
-    diagnosticButton.addEventListener('click', handleDiagnosticClick);
-  }
-  
-  if (textarea) {
-    textarea.focus();
+  // Bubble toggle - simple change event listener
+  const bubbleToggle = document.getElementById('bubbleToggle') as HTMLInputElement;
+  if (bubbleToggle) {
+    bubbleToggle.addEventListener('change', (event) => {
+      const target = event.target as HTMLInputElement;
+      saveSettings(STORAGE_KEYS.BUBBLE_ENABLED, target.checked);
+    });
   }
 };
 
-// Main initialization
-const initializePopup = (): void => {
-  initializeElements();
-  setupEventListeners();
-  getSelectedText();
-};
-
-// Initialize when DOM is loaded
-document.addEventListener('DOMContentLoaded', initializePopup);
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializePopup);
+} else {
+  initializePopup();
+}

@@ -1,21 +1,38 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>PhraseBE</title>
-    <link rel="stylesheet" href="popup.css" />
-  </head>
-  <body>
-    <div id="container">
-      <h1>PhraseBE</h1>
-      <textarea id="input" placeholder="Type here..." autofocus></textarea>
-      <div class="actions">
-        <button id="clear">Clear</button>
-        <button id="runDiagnostic">🔍 Run Diagnostic</button>
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PhraseBE Settings</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+
+<body>
+  <div class="settings-container">
+    <!-- Header -->
+    <div class="header">
+      <div class="logo-container">
+        <div class="logo">
+          <img src="assets/icons/papaer_airplane.png" alt="PhraseBE" />
+        </div>
+        <span class="brand-name">phrasebe</span>
       </div>
-      <div id="diagnosticResults" class="diagnostic-results"></div>
     </div>
-    <script src="popup.js"></script>
-  </body>
+
+    <!-- Settings Section -->
+    <div class="settings-section">
+      <!-- Single Toggle Setting -->
+      <div class="setting-item">
+        <span class="setting-label">Enable bubble in Gmail</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="bubbleToggle" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+
 </html>

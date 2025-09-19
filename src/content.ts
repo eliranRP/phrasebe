@@ -82,7 +82,7 @@ const createBubble = (): HTMLDivElement => {
     border-radius: 50%;
     cursor: pointer;
     z-index: 2147483647;
-    display: flex;
+    display: none;
     align-items: center;
     justify-content: center;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
@@ -144,21 +144,27 @@ const replaceGmailText = async (element: HTMLElement): Promise<void> => {
     return; // No text to process
   }
 
-  // Check if AI is available
-  const aiAvailable = await checkAIAvailability();
+  // Check if AI is enabled and available
+  if (aiEnabled) {
+    const aiAvailable = await checkAIAvailability();
 
-  if (aiAvailable) {
-    try {
-      // Process text with AI based on user instructions
-      const aiAnswer = await processTextWithAI(originalText);
-      element.innerHTML = `<div dir="ltr">${aiAnswer}</div>`;
-    } catch (error) {
-      // Fallback to simple transformation
-      const fallbackText = `AI Processed: ${originalText}`;
+    if (aiAvailable) {
+      try {
+        // Process text with AI based on user instructions
+        const aiAnswer = await processTextWithAI(originalText);
+        element.innerHTML = `<div dir="ltr">${aiAnswer}</div>`;
+      } catch (error) {
+        // Fallback to simple transformation
+        const fallbackText = `AI Processed: ${originalText}`;
+        element.innerHTML = `<div dir="ltr">${fallbackText}</div>`;
+      }
+    } else {
+      // Simple fallback transformation
+      const fallbackText = `Processed: ${originalText}`;
       element.innerHTML = `<div dir="ltr">${fallbackText}</div>`;
     }
   } else {
-    // Simple fallback transformation
+    // Simple transformation when AI is disabled
     const fallbackText = `Processed: ${originalText}`;
     element.innerHTML = `<div dir="ltr">${fallbackText}</div>`;
   }
@@ -168,24 +174,48 @@ const replaceGmailText = async (element: HTMLElement): Promise<void> => {
   element.dispatchEvent(inputEvent);
 };
 
+// Settings management
+let aiEnabled = true;
+let globalBubble: HTMLDivElement | null = null;
+
+// Check if bubble is enabled by reading from storage
+const isBubbleEnabled = async (): Promise<boolean> => {
+  try {
+    const result = await chrome.storage.sync.get(['phrasebe_bubble_enabled']);
+    return result.phrasebe_bubble_enabled !== false; // Default to true
+  } catch (error) {
+    return true; // Default to enabled if storage fails
+  }
+};
+
+
 // Initialize extension
-const initializeExtension = (): void => {
+const initializeExtension = async (): Promise<void> => {
   if (!isGmail()) {
     return; // Only work in Gmail
   }
 
   const bubble = createBubble();
+  globalBubble = bubble;
 
   // Show bubble when typing in Gmail compose
-  const handleInput = (event: Event): void => {
+  const handleInput = async (event: Event): Promise<void> => {
+    // Always check if bubble is enabled first
+    const bubbleEnabled = await isBubbleEnabled();
+    debugger;
+    if (!bubbleEnabled) {
+      bubble.style.setProperty('display', 'none', 'important');
+      return;
+    }
+
     const target = event.target as HTMLElement;
     const composeDiv = getGmailComposeDiv();
 
     if (composeDiv && target === composeDiv && composeDiv.textContent && composeDiv.textContent.trim().length > 0) {
       positionBubbleAtCursor(bubble, composeDiv);
-      bubble.style.display = 'flex';
+      bubble.style.setProperty('display', 'flex', 'important');
     } else {
-      bubble.style.display = 'none';
+      bubble.style.setProperty('display', 'none', 'important');
     }
   };
 
@@ -209,11 +239,11 @@ const initializeExtension = (): void => {
           // Remove loading state
           bubble.style.border = '1px solid rgba(255, 255, 255, 0.2)';
           bubble.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.4)';
-          bubble.style.display = 'none';
+          bubble.style.setProperty('display', 'none', 'important');
         }
       }
     } else if (!target.closest('[contenteditable="true"]')) {
-      bubble.style.display = 'none';
+      bubble.style.setProperty('display', 'none', 'important');
     }
   };
 

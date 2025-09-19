@@ -60,6 +60,10 @@ module.exports = {
           to: 'content.css'
         },
         {
+          from: 'src/popup.css',
+          to: 'popup.css'
+        },
+        {
           from: 'src/assets/icons',
           to: 'assets/icons'
         }

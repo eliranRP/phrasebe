@@ -1,379 +1,248 @@
-/* ==========================================================================
-   PhraseBE Popup Styles
-   ========================================================================== */
+/* PhraseBE Popup Styles - Organized Grammarly Design */
 
-/* CSS Custom Properties (CSS Variables) */
-:root {
-  /* Colors - Light Theme */
-  --phrasebe-color-primary: #10b981;
-  --phrasebe-color-primary-hover: #059669;
-  --phrasebe-color-primary-active: #047857;
-  --phrasebe-color-background: #ffffff;
-  --phrasebe-color-background-hover: #f9fafb;
-  --phrasebe-color-background-secondary: #f8f9fa;
-  --phrasebe-color-border: #e5e7eb;
-  --phrasebe-color-border-hover: #d1d5db;
-  --phrasebe-color-text: #111827;
-  --phrasebe-color-text-secondary: #6b7280;
-  --phrasebe-color-text-muted: #9ca3af;
-  --phrasebe-color-shadow: rgba(0, 0, 0, 0.1);
-  --phrasebe-color-shadow-hover: rgba(0, 0, 0, 0.15);
-
-  /* Dark Theme Colors */
-  --phrasebe-color-background-dark: #1f2937;
-  --phrasebe-color-background-hover-dark: #374151;
-  --phrasebe-color-background-secondary-dark: #111827;
-  --phrasebe-color-border-dark: #4b5563;
-  --phrasebe-color-border-hover-dark: #6b7280;
-  --phrasebe-color-text-dark: #f9fafb;
-  --phrasebe-color-text-secondary-dark: #d1d5db;
-  --phrasebe-color-text-muted-dark: #9ca3af;
-  --phrasebe-color-shadow-dark: rgba(0, 0, 0, 0.3);
-  --phrasebe-color-shadow-hover-dark: rgba(0, 0, 0, 0.4);
-
-  /* Spacing */
-  --phrasebe-spacing-xs: 2px;
-  --phrasebe-spacing-sm: 4px;
-  --phrasebe-spacing-md: 8px;
-  --phrasebe-spacing-lg: 12px;
-  --phrasebe-spacing-xl: 16px;
-  --phrasebe-spacing-2xl: 20px;
-
-  /* Border Radius */
-  --phrasebe-radius-sm: 4px;
-  --phrasebe-radius-md: 6px;
-  --phrasebe-radius-lg: 8px;
-
-  /* Typography */
-  --phrasebe-font-size-xs: 11px;
-  --phrasebe-font-size-sm: 12px;
-  --phrasebe-font-size-md: 13px;
-  --phrasebe-font-size-lg: 14px;
-  --phrasebe-font-size-xl: 16px;
-  --phrasebe-font-weight-normal: 400;
-  --phrasebe-font-weight-medium: 500;
-  --phrasebe-font-weight-semibold: 600;
-  --phrasebe-font-weight-bold: 700;
-
-  /* Transitions */
-  --phrasebe-transition-fast: 0.15s ease;
-  --phrasebe-transition-normal: 0.2s ease;
-
-  /* Layout */
-  --phrasebe-popup-width: 320px;
-  --phrasebe-popup-min-height: 200px;
-  --phrasebe-textarea-height: 160px;
-}
-
-/* Dark Theme Support */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --phrasebe-color-background: var(--phrasebe-color-background-dark);
-    --phrasebe-color-background-hover: var(--phrasebe-color-background-hover-dark);
-    --phrasebe-color-background-secondary: var(--phrasebe-color-background-secondary-dark);
-    --phrasebe-color-border: var(--phrasebe-color-border-dark);
-    --phrasebe-color-border-hover: var(--phrasebe-color-border-hover-dark);
-    --phrasebe-color-text: var(--phrasebe-color-text-dark);
-    --phrasebe-color-text-secondary: var(--phrasebe-color-text-secondary-dark);
-    --phrasebe-color-text-muted: var(--phrasebe-color-text-muted-dark);
-    --phrasebe-color-shadow: var(--phrasebe-color-shadow-dark);
-    --phrasebe-color-shadow-hover: var(--phrasebe-color-shadow-hover-dark);
-  }
-}
-
-/* ==========================================================================
-   Base Styles
-   ========================================================================== */
-
-/* Reset and Base */
-html {
+* {
+  margin: 0;
+  padding: 0;
   box-sizing: border-box;
 }
 
-*, *::before, *::after {
-  box-sizing: inherit;
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #1a1a1a;
+  color: white;
+  width: 280px;
+  min-height: 200px;
+  margin: 0;
+  padding: 0;
 }
 
+.settings-container {
+  background: #2d2d2d;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  min-height: 200px;
+}
+
+/* Header with logo */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logo {
+  width: 24px;
+  height: 24px;
+  background: #9B72FF;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.logo img {
+  width: 14px;
+  height: 14px;
+  filter: brightness(0) invert(1);
+}
+
+.brand-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+}
+
+
+/* Settings sections */
+.settings-section {
+  margin-bottom: 0;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: white;
+}
+
+.all-settings-link {
+  color: #9B72FF;
+  text-decoration: none;
+  font-size: 16px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: color 0.2s ease;
+  cursor: pointer;
+}
+
+.all-settings-link:hover {
+  color: #8B5CF6;
+}
+
+.external-icon {
+  width: 16px;
+  height: 16px;
+  opacity: 0.8;
+  color: #9B72FF;
+}
+
+/* Toggle setting item */
+.setting-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #404040;
+}
+
+.setting-item:last-child {
+  border-bottom: none;
+}
+
+.setting-label {
+  font-size: 14px;
+  color: white;
+  font-weight: 400;
+}
+
+/* Toggle switch */
+.toggle-switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  cursor: pointer;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #404040;
+  border-radius: 32px;
+  transition: all 0.3s ease;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background: white;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.toggle-switch input:checked+.toggle-slider {
+  background: #9B72FF;
+}
+
+.toggle-switch input:checked+.toggle-slider:before {
+  transform: translateX(20px);
+}
+
+/* Check icon inside toggle when active */
+.toggle-slider::after {
+  content: "✓";
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  transform: translateY(-50%);
+  color: #9B72FF;
+  font-weight: bold;
+  font-size: 14px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.toggle-switch input:checked+.toggle-slider::after {
+  opacity: 1;
+}
+
+/* Dark mode detection and theme adaptation */
+@media (prefers-color-scheme: light) {
+  body {
+    background: #ffffff;
+    color: #1a1a1a;
+  }
+
+  .settings-container {
+    background: #f8f9fa;
+  }
+
+  .brand-name {
+    color: #1a1a1a;
+  }
+
+  .section-title {
+    color: #1a1a1a;
+  }
+
+  .setting-label {
+    color: #1a1a1a;
+  }
+
+  .setting-item {
+    border-bottom: 1px solid #e0e0e0;
+  }
+
+  .toggle-slider {
+    background: #e0e0e0;
+  }
+
+  .toggle-slider:before {
+    background: #ffffff;
+  }
+}
+
+/* Chrome extension popup specific styles */
 body {
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', Arial, sans-serif;
-  font-size: var(--phrasebe-font-size-md);
-  line-height: 1.5;
-  color: var(--phrasebe-color-text);
-  background: var(--phrasebe-color-background);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
-/* ==========================================================================
-   Layout Components
-   ========================================================================== */
-
-#container {
-  width: var(--phrasebe-popup-width);
-  min-height: var(--phrasebe-popup-min-height);
-  padding: var(--phrasebe-spacing-lg);
-  background: var(--phrasebe-color-background);
-}
-
-/* ==========================================================================
-   Typography
-   ========================================================================== */
-
-h1 {
-  margin: 0 0 var(--phrasebe-spacing-md);
-  font-size: var(--phrasebe-font-size-xl);
-  font-weight: var(--phrasebe-font-weight-semibold);
-  color: var(--phrasebe-color-text);
-  line-height: 1.3;
-}
-
-/* ==========================================================================
-   Form Elements
-   ========================================================================== */
-
-#input {
-  /* Layout */
-  width: 100%;
-  height: var(--phrasebe-textarea-height);
-  resize: vertical;
-  
-  /* Styling */
-  padding: var(--phrasebe-spacing-md);
-  border: 1px solid var(--phrasebe-color-border);
-  border-radius: var(--phrasebe-radius-md);
-  background: var(--phrasebe-color-background);
-  
-  /* Typography */
-  font-family: inherit;
-  font-size: var(--phrasebe-font-size-md);
-  color: var(--phrasebe-color-text);
-  line-height: 1.5;
-  
-  /* Interaction */
-  outline: none;
-  
-  /* Performance */
-  will-change: border-color, box-shadow;
-  transition: border-color var(--phrasebe-transition-fast), box-shadow var(--phrasebe-transition-fast);
-}
-
-#input:focus {
-  border-color: var(--phrasebe-color-primary);
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-}
-
-#input::placeholder {
-  color: var(--phrasebe-color-text-muted);
-}
-
-#input:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  background: var(--phrasebe-color-background-secondary);
-}
-
-/* ==========================================================================
-   Action Buttons
-   ========================================================================== */
-
-.actions {
-  margin-top: var(--phrasebe-spacing-md);
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--phrasebe-spacing-md);
-}
-
-button {
-  /* Layout */
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  
-  /* Styling */
-  padding: var(--phrasebe-spacing-sm) var(--phrasebe-spacing-lg);
-  border: 1px solid var(--phrasebe-color-border);
-  border-radius: var(--phrasebe-radius-md);
-  background: var(--phrasebe-color-background);
-  
-  /* Typography */
-  font-family: inherit;
-  font-size: var(--phrasebe-font-size-sm);
-  font-weight: var(--phrasebe-font-weight-medium);
-  color: var(--phrasebe-color-text);
-  
-  /* Interaction */
-  cursor: pointer;
-  outline: none;
-  user-select: none;
-  
-  /* Performance */
-  will-change: background-color, border-color, transform;
-  transition: all var(--phrasebe-transition-fast);
-}
-
-button:hover {
-  background: var(--phrasebe-color-background-hover);
-  border-color: var(--phrasebe-color-border-hover);
-}
-
-button:active {
-  transform: translateY(1px);
-}
-
-button:focus {
-  border-color: var(--phrasebe-color-primary);
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-}
-
-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  pointer-events: none;
-}
-
-/* Primary Button Variant */
-button.primary {
-  background: var(--phrasebe-color-primary);
-  color: var(--phrasebe-color-background);
-  border-color: var(--phrasebe-color-primary);
-}
-
-button.primary:hover {
-  background: var(--phrasebe-color-primary-hover);
-  border-color: var(--phrasebe-color-primary-hover);
-}
-
-button.primary:active {
-  background: var(--phrasebe-color-primary-active);
-  border-color: var(--phrasebe-color-primary-active);
-}
-
-/* ==========================================================================
-   Responsive Design
-   ========================================================================== */
-
-@media (max-width: 400px) {
-  :root {
-    --phrasebe-popup-width: 280px;
-    --phrasebe-textarea-height: 140px;
-  }
-}
-
-@media (max-width: 320px) {
-  :root {
-    --phrasebe-popup-width: 260px;
-    --phrasebe-textarea-height: 120px;
-    --phrasebe-spacing-lg: var(--phrasebe-spacing-md);
-  }
-}
-
-/* ==========================================================================
-   High Contrast Mode Support
-   ========================================================================== */
-
-@media (prefers-contrast: high) {
-  :root {
-    --phrasebe-color-border: #000000;
-    --phrasebe-color-border-hover: #000000;
-    --phrasebe-color-shadow: rgba(0, 0, 0, 0.5);
-    --phrasebe-color-shadow-hover: rgba(0, 0, 0, 0.7);
-  }
-  
-  button:focus,
-  #input:focus {
-    outline: 2px solid var(--phrasebe-color-primary);
-    outline-offset: 2px;
-  }
-}
-
-/* ==========================================================================
-   Reduced Motion Support
-   ========================================================================== */
-
-@media (prefers-reduced-motion: reduce) {
-  button,
-  #input {
-    transition: none;
-  }
-  
-  button:active {
-    transform: none;
-  }
-}
-
-/* ==========================================================================
-   Print Styles
-   ========================================================================== */
-
-@media print {
+/* Responsive design */
+@media (max-width: 450px) {
   body {
-    background: white;
-    color: black;
+    width: 350px;
   }
-  
-  #container {
-    width: 100%;
-    padding: 0;
+
+  .settings-container {
+    padding: 20px;
   }
-  
-  button {
-    display: none;
+
+  .section-title {
+    font-size: 24px;
   }
-}
 
-/* ==========================================================================
-   Diagnostic Results
-   ========================================================================== */
-
-.diagnostic-results {
-  margin-top: var(--phrasebe-spacing-lg);
-  max-height: 300px;
-  overflow-y: auto;
-  border: 1px solid var(--phrasebe-color-border);
-  border-radius: var(--phrasebe-radius-md);
-  padding: var(--phrasebe-spacing-md);
-  background: var(--phrasebe-color-background-secondary);
-}
-
-.status {
-  padding: var(--phrasebe-spacing-sm) var(--phrasebe-spacing-md);
-  margin: var(--phrasebe-spacing-sm) 0;
-  border-radius: var(--phrasebe-radius-sm);
-  font-size: var(--phrasebe-font-size-sm);
-  line-height: 1.4;
-}
-
-.status.success {
-  background-color: #d4edda;
-  color: #155724;
-  border: 1px solid #c3e6cb;
-}
-
-.status.error {
-  background-color: #f8d7da;
-  color: #721c24;
-  border: 1px solid #f5c6cb;
-}
-
-.status.warning {
-  background-color: #fff3cd;
-  color: #856404;
-  border: 1px solid #ffeaa7;
-}
-
-.status.info {
-  background-color: #d1ecf1;
-  color: #0c5460;
-  border: 1px solid #bee5eb;
-}
-
-.status pre {
-  background: rgba(0, 0, 0, 0.1);
-  padding: var(--phrasebe-spacing-sm);
-  border-radius: var(--phrasebe-radius-sm);
-  margin: var(--phrasebe-spacing-sm) 0;
-  font-size: var(--phrasebe-font-size-xs);
-  overflow-x: auto;
+  .setting-label {
+    font-size: 16px;
+  }
 }
