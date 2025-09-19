@@ -29,7 +29,7 @@
       "run_at": "document_end"
     }
   ],
-  "permissions": ["storage", "language-model"],
+  "permissions": ["storage"],
   "host_permissions": ["https://*/*", "http://*/*"],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self';"
