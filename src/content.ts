@@ -447,6 +447,8 @@ let suggestionBox: HTMLDivElement | null = null;
 let isDragging = false;
 let dragOffset = { x: 0, y: 0 };
 let dragJustEnded = false;
+let lastSelectedText: string | null = null;
+let hasSelectionChanged = false;
 
 // Helper function to replace selected text
 const replaceSelectedText = (newText: string): void => {
@@ -1273,6 +1275,14 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
 
 const hideSuggestionBox = (): void => {
   if (suggestionBox) {
+    // Track the last selected text before hiding
+    const selection = window.getSelection();
+    if (selection && selection.toString().trim().length > 0) {
+      lastSelectedText = selection.toString().trim();
+      hasSelectionChanged = false; // Reset selection change flag
+      console.log('Tracked last selected text:', lastSelectedText);
+    }
+
     suggestionBox.remove();
     suggestionBox = null;
   }
@@ -1327,6 +1337,8 @@ const handleTextSelection = async (): Promise<void> => {
       selectionTimeout = null;
     }
     hideSuggestionBox();
+    hasSelectionChanged = true; // Mark that selection has changed (to empty)
+    lastSelectedText = null; // Clear last selected text when selection is empty
     return;
   }
 
@@ -1338,8 +1350,19 @@ const handleTextSelection = async (): Promise<void> => {
       selectionTimeout = null;
     }
     hideSuggestionBox();
+    lastSelectedText = null; // Clear last selected text when selection is empty
     return;
   }
+
+  // Check if this is the same text that was selected when the box was last closed
+  // AND the selection hasn't changed (user didn't unselect and reselect)
+  if (lastSelectedText && selectedText === lastSelectedText && !hasSelectionChanged) {
+    console.log('Same text selected as last time without selection change, not reopening box:', selectedText);
+    return; // Don't reopen the box for the same text without selection change
+  }
+
+  // Mark that we have a new selection
+  hasSelectionChanged = true;
 
   // Don't recreate the box if it already exists and user is interacting with it
   if (suggestionBox && document.body.contains(suggestionBox)) {
@@ -1359,6 +1382,9 @@ const handleTextSelection = async (): Promise<void> => {
       return; // Selection was cleared, don't show box
     }
 
+    // Clear the last selected text since we're showing the box for new text
+    lastSelectedText = null;
+    hasSelectionChanged = false; // Reset selection change flag
     await showSuggestionBox(selectedText);
   }, 2500);
 };
