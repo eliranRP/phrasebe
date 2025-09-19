@@ -4,11 +4,17 @@
   "private": true,
   "description": "Chrome extension that rephrases text with a popup + floating chat.",
   "scripts": {
-    "build": "webpack --mode=production",
-    "build:dev": "webpack --mode=development",
-    "watch": "webpack --mode=development --watch",
-    "clean": "rm -rf dist",
-    "zip": "npm run build && cd dist && /usr/bin/zip -r phrasebe.zip . >/dev/null || true",
+    "build": "webpack --config webpack.dev.js",
+    "build:dev": "webpack --config webpack.dev.js",
+    "build:prod": "webpack --config webpack.prod.js",
+    "watch": "webpack --config webpack.dev.js --watch",
+    "watch:dev": "webpack --config webpack.dev.js --watch",
+    "clean": "rm -rf dist dist-dev dist-prod",
+    "clean:dev": "rm -rf dist-dev",
+    "clean:prod": "rm -rf dist-prod",
+    "zip:dev": "npm run build:dev && cd dist-dev && /usr/bin/zip -r phrasebe-dev.zip . >/dev/null || true",
+    "zip:prod": "npm run build:prod && cd dist-prod && /usr/bin/zip -r phrasebe-prod.zip . >/dev/null || true",
+    "zip": "npm run zip:prod",
     "legacy-build": "./build.sh"
   },
   "devDependencies": {
