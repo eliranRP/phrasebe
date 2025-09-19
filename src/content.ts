@@ -593,22 +593,34 @@ const createSuggestionBox = async (selectedText: string, position: { x: number; 
     </div>
   `;
 
-  // Position the box based on text direction
-  const boxWidth = 350; // Approximate width of the box
-  let leftPosition: number;
+  // Check if we're on WhatsApp Web for centered positioning
+  const isWhatsAppWeb = window.location.hostname.includes('web.whatsapp.com');
 
-  if (direction === 'rtl') {
-    // For RTL languages, position to the right of the selection
-    leftPosition = Math.min(window.innerWidth - boxWidth - 10, position.x + 20);
+  if (isWhatsAppWeb) {
+    // For WhatsApp Web, center the box in the middle of the screen
+    box.style.position = 'fixed';
+    box.style.left = '50%';
+    box.style.top = '50%';
+    box.style.transform = 'translate(-50%, -50%)';
+    box.style.zIndex = '10000';
   } else {
-    // For LTR languages, position to the left of the selection
-    leftPosition = Math.max(10, position.x - boxWidth - 20);
-  }
+    // For other sites, use the original positioning logic
+    const boxWidth = 350; // Approximate width of the box
+    let leftPosition: number;
 
-  box.style.position = 'fixed';
-  box.style.left = leftPosition + 'px';
-  box.style.top = position.y + 'px';
-  box.style.zIndex = '10000';
+    if (direction === 'rtl') {
+      // For RTL languages, position to the right of the selection
+      leftPosition = Math.min(window.innerWidth - boxWidth - 10, position.x + 20);
+    } else {
+      // For LTR languages, position to the left of the selection
+      leftPosition = Math.max(10, position.x - boxWidth - 20);
+    }
+
+    box.style.position = 'fixed';
+    box.style.left = leftPosition + 'px';
+    box.style.top = position.y + 'px';
+    box.style.zIndex = '10000';
+  }
 
   return box;
 };
@@ -625,11 +637,27 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
     suggestionBox.remove();
   }
 
+  // Check if we're on WhatsApp Web
+  const isWhatsAppWeb = window.location.hostname.includes('web.whatsapp.com');
+
+  let position: { x: number; y: number };
+
+  if (isWhatsAppWeb) {
+    // For WhatsApp Web, center the box in the middle of the screen
+    position = {
+      x: window.innerWidth / 2,
+      y: window.innerHeight / 2
+    };
+  } else {
+    // For other sites, use the original positioning near the selection
+    position = {
+      x: rect.left,
+      y: rect.top
+    };
+  }
+
   // Create and show new suggestion box
-  suggestionBox = await createSuggestionBox(selectedText, {
-    x: rect.left,
-    y: rect.top
-  });
+  suggestionBox = await createSuggestionBox(selectedText, position);
 
   document.body.appendChild(suggestionBox);
 
