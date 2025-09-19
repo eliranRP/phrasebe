@@ -62,11 +62,61 @@ const isGmail = (): boolean => {
   return window.location.hostname.includes('mail.google.com');
 };
 
-// Gmail compose contenteditable detection
+// Gmail compose contenteditable detection - focus-based
 const getGmailComposeDiv = (): HTMLElement | null => {
-  // Gmail compose contenteditable div selector
-  const div = document.querySelector('div[contenteditable="true"][role="textbox"][aria-multiline="true"]') as HTMLElement;
-  return div;
+  // First, check if there's a currently focused contenteditable element
+  const activeElement = document.activeElement as HTMLElement;
+
+  // If the active element is a Gmail compose div, use it
+  if (activeElement &&
+    activeElement.hasAttribute('contenteditable') &&
+    activeElement.getAttribute('contenteditable') === 'true' &&
+    activeElement.hasAttribute('role') &&
+    activeElement.getAttribute('role') === 'textbox') {
+    return activeElement;
+  }
+
+  // If no focused element, try to find the most recently interacted with compose div
+  const allComposeDivs = Array.from(document.querySelectorAll('div[contenteditable="true"][role="textbox"][aria-multiline="true"]')) as HTMLElement[];
+
+  // Look for the one that's visible and has content or cursor
+  for (const div of allComposeDivs) {
+    const rect = div.getBoundingClientRect();
+    const isVisible = rect.width > 0 && rect.height > 0;
+    const hasContent = div.textContent && div.textContent.trim().length > 0;
+    const hasSelection = window.getSelection() && window.getSelection()!.rangeCount > 0;
+
+    if (isVisible && (hasContent || hasSelection)) {
+      return div;
+    }
+  }
+
+  // Fallback to the first visible compose div
+  for (const div of allComposeDivs) {
+    const rect = div.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      return div;
+    }
+  }
+
+  return null;
+};
+
+// Check if we're in a new email compose (vs reply)
+const isNewEmailCompose = (element: HTMLElement): boolean => {
+  // Check for specific attributes that indicate new email compose
+  const hasGEditable = element.hasAttribute('g_editable');
+  const hasMinHeight = element.style.minHeight && element.style.minHeight.includes('325px');
+
+  // Check if parent contains compose-specific elements
+  const composeContainer = element.closest('[role="dialog"]') || element.closest('.Am');
+  const hasComposeIndicators = composeContainer && (
+    composeContainer.querySelector('[aria-label*="compose"]') ||
+    composeContainer.querySelector('[aria-label*="Compose"]') ||
+    composeContainer.querySelector('.Am')
+  );
+
+  return hasGEditable || hasMinHeight || !!hasComposeIndicators;
 };
 
 // Bubble management functions
@@ -202,17 +252,24 @@ const initializeExtension = async (): Promise<void> => {
   const handleInput = async (event: Event): Promise<void> => {
     // Always check if bubble is enabled first
     const bubbleEnabled = await isBubbleEnabled();
-    debugger;
     if (!bubbleEnabled) {
       bubble.style.setProperty('display', 'none', 'important');
       return;
     }
 
     const target = event.target as HTMLElement;
-    const composeDiv = getGmailComposeDiv();
 
-    if (composeDiv && target === composeDiv && composeDiv.textContent && composeDiv.textContent.trim().length > 0) {
-      positionBubbleAtCursor(bubble, composeDiv);
+    // Check if the target is a Gmail compose div
+    const isComposeDiv = target.hasAttribute('contenteditable') &&
+      target.getAttribute('contenteditable') === 'true' &&
+      target.hasAttribute('role') &&
+      target.getAttribute('role') === 'textbox' &&
+      target.hasAttribute('aria-multiline') &&
+      target.getAttribute('aria-multiline') === 'true';
+
+    if (isComposeDiv && target.textContent && target.textContent.trim().length > 0) {
+      // Use the target element directly since it's the one being typed in
+      positionBubbleAtCursor(bubble, target);
       bubble.style.setProperty('display', 'flex', 'important');
     } else {
       bubble.style.setProperty('display', 'none', 'important');
