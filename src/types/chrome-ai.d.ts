@@ -8,6 +8,7 @@ declare global {
                 role: string;
                 content: string;
             }>;
+            outputLanguage?: string;
             monitor?: (monitor: LanguageModelMonitor) => void;
         }): Promise<LanguageModelSession>;
         params(): Promise<{

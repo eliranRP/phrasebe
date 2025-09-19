@@ -98,6 +98,7 @@ const createAISession = async (): Promise<LanguageModelSession> => {
       role: "system",
       content: "You are a professional email writing assistant. You help users write concise, email body content based on their instructions. Always respond with only the email body content - no subject lines, no placeholders like [Name] or [Your Name], and no explanations. Keep responses brief and to the point."
     }],
+    outputLanguage: "en", // Specify English as output language to prevent crashes
     monitor(m: LanguageModelMonitor) {
       m.addEventListener('downloadprogress', (e: LanguageModelDownloadProgressEvent) => {
         // Download progress
@@ -534,7 +535,7 @@ const createSuggestionBox = async (selectedText: string, position: { x: number; 
       <div class="header-drag-handle"></div>
       <div class="header-accent"></div>
       <div class="header-content">
-        <div class="header-title">Translation</div>
+        <div class="header-title">Translation (Detecting language...)</div>
         <div class="skeleton-loader">
           <div class="skeleton-line short"></div>
           <div class="skeleton-line medium"></div>
@@ -772,7 +773,7 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
         const headerContent = suggestionBox.querySelector('.header-content') as HTMLElement;
         if (headerContent) {
           headerContent.innerHTML = `
-            <div class="header-title">Translation</div>
+            <div class="header-title">Translation (${detectedLanguage} → ${getLanguageName(targetLanguage)})</div>
             <div class="header-text" dir="${outputDirection}">${translatedText}</div>
           `;
         }
@@ -817,7 +818,7 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
       const headerContent = suggestionBox?.querySelector('.header-content') as HTMLElement;
       if (headerContent) {
         headerContent.innerHTML = `
-          <div class="header-title">Translation</div>
+          <div class="header-title">Translation (Translating...)</div>
           <div class="skeleton-loader">
             <div class="skeleton-line short"></div>
             <div class="skeleton-line medium"></div>
@@ -831,25 +832,29 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
       languageSelect.style.opacity = '0.7';
 
       try {
-        const { language } = await detectLanguage(selectedText);
+        // Get the current text from the suggestion box (could be original or AI response)
+        const headerText = suggestionBox?.querySelector('.header-text') as HTMLElement;
+        const currentText = headerText ? headerText.textContent || selectedText : selectedText;
+
+        const { language } = await detectLanguage(currentText);
         const sourceLanguage = language;
         const targetLanguageCode = languageSelect.value;
         const targetLanguageName = languageSelect.options[languageSelect.selectedIndex].text;
 
-        console.log('Auto-translation request:', {
-          selectedText,
+        console.log('Language dropdown translation request:', {
+          currentText,
           sourceLanguage,
           targetLanguageCode,
           targetLanguageName
         });
 
-        const translatedText = await translateText(selectedText, sourceLanguage, targetLanguageName);
+        const translatedText = await translateText(currentText, sourceLanguage, targetLanguageName);
 
         // Update the suggestion box with new translation
         if (suggestionBox && headerContent) {
           const outputDirection = targetLanguageCode === 'he' || targetLanguageCode === 'ar' ? 'rtl' : 'ltr';
           headerContent.innerHTML = `
-            <div class="header-title">Translation</div>
+            <div class="header-title">Translation (${sourceLanguage} → ${targetLanguageName})</div>
             <div class="header-text" dir="${outputDirection}">${translatedText}</div>
           `;
         }
@@ -1020,9 +1025,21 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
 
         const aiResponse = await processTextWithAI(customPrompt, translatedText);
 
+        // Detect language of AI response and set appropriate text direction
+        const { language: responseLanguage, direction: responseDirection } = await detectLanguage(aiResponse);
+
         // Update the suggestion box with the AI response
         if (suggestionBox && headerText) {
           headerText.textContent = aiResponse;
+          headerText.setAttribute('dir', responseDirection);
+
+          // Update the dropdown to show the detected language of the AI response
+          const languageSelect = suggestionBox.querySelector('.language-select') as HTMLSelectElement;
+          if (languageSelect) {
+            const responseLanguageCode = getLanguageCodeFromName(responseLanguage);
+            languageSelect.value = responseLanguageCode;
+          }
+
           // Clear the input
           whatsappInput.value = '';
           toggleSendButton(); // Hide send button
@@ -1032,6 +1049,7 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
         // Show error in the suggestion box
         if (suggestionBox && headerText) {
           headerText.textContent = 'Error processing your request. Please try again.';
+          headerText.setAttribute('dir', 'ltr'); // Error messages are always LTR
         }
       } finally {
         // Restore input state
@@ -1083,9 +1101,21 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
 
         const aiResponse = await processTextWithAI(customPrompt, translatedText);
 
+        // Detect language of AI response and set appropriate text direction
+        const { language: responseLanguage, direction: responseDirection } = await detectLanguage(aiResponse);
+
         // Update the suggestion box with the AI response
         if (suggestionBox && headerText) {
           headerText.textContent = aiResponse;
+          headerText.setAttribute('dir', responseDirection);
+
+          // Update the dropdown to show the detected language of the AI response
+          const languageSelect = suggestionBox.querySelector('.language-select') as HTMLSelectElement;
+          if (languageSelect) {
+            const responseLanguageCode = getLanguageCodeFromName(responseLanguage);
+            languageSelect.value = responseLanguageCode;
+          }
+
           // Clear the input
           if (whatsappInput) {
             whatsappInput.value = '';
@@ -1097,6 +1127,7 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
         // Show error in the suggestion box
         if (suggestionBox && headerText) {
           headerText.textContent = 'Error processing your request. Please try again.';
+          headerText.setAttribute('dir', 'ltr'); // Error messages are always LTR
         }
       } finally {
         // Restore button state
