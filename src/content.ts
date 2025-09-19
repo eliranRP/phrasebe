@@ -1032,6 +1032,49 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
   const whatsappSendBtn = suggestionBox?.querySelector('.whatsapp-send-btn') as HTMLButtonElement;
 
   if (whatsappInput) {
+    // Function to ensure placeholder appears when input is empty
+    const ensurePlaceholderVisible = () => {
+      const text = whatsappInput.textContent?.trim() || '';
+      if (!text) {
+        // Force the element to be recognized as empty
+        whatsappInput.innerHTML = '';
+        whatsappInput.setAttribute('dir', 'ltr');
+        console.log('Placeholder should be visible (empty input)');
+      }
+    };
+
+    // Function to detect RTL languages and update text direction
+    const detectAndSetTextDirection = (text: string) => {
+      const trimmedText = text.trim();
+
+      if (!trimmedText) {
+        // Reset to default when empty
+        whatsappInput.setAttribute('dir', 'ltr');
+        console.log('Text direction reset to LTR (empty input)');
+        return;
+      }
+
+      // RTL language detection patterns
+      const rtlPatterns = [
+        /[\u0590-\u05FF]/, // Hebrew
+        /[\u0600-\u06FF]/, // Arabic
+        /[\u0750-\u077F]/, // Arabic Supplement
+        /[\u08A0-\u08FF]/, // Arabic Extended-A
+        /[\uFB1D-\uFDFF]/, // Arabic Presentation Forms-A
+        /[\uFE70-\uFEFF]/, // Arabic Presentation Forms-B
+        /[\u200F]/, // Right-to-left mark
+        /[\u202E]/, // Right-to-left override
+      ];
+
+      // Check if text contains RTL characters
+      const isRTL = rtlPatterns.some(pattern => pattern.test(trimmedText));
+
+      // Set text direction
+      whatsappInput.setAttribute('dir', isRTL ? 'rtl' : 'ltr');
+
+      console.log('Text direction detected:', isRTL ? 'RTL' : 'LTR', 'for text:', trimmedText.substring(0, 20) + '...');
+    };
+
     // Show/hide send button based on input content
     const toggleSendButton = () => {
       if (whatsappSendBtn) {
@@ -1045,8 +1088,18 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
     };
 
     // Handle input changes
-    whatsappInput.addEventListener('input', toggleSendButton);
-    whatsappInput.addEventListener('keyup', toggleSendButton);
+    whatsappInput.addEventListener('input', () => {
+      const text = whatsappInput.textContent || '';
+      detectAndSetTextDirection(text);
+      ensurePlaceholderVisible();
+      toggleSendButton();
+    });
+    whatsappInput.addEventListener('keyup', () => {
+      const text = whatsappInput.textContent || '';
+      detectAndSetTextDirection(text);
+      ensurePlaceholderVisible();
+      toggleSendButton();
+    });
 
     const handleCustomPrompt = async () => {
       const customPrompt = whatsappInput.textContent?.trim() || '';
@@ -1092,6 +1145,8 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
 
           // Clear the input
           whatsappInput.textContent = '';
+          whatsappInput.innerHTML = ''; // Ensure completely empty
+          ensurePlaceholderVisible(); // Ensure placeholder appears
           toggleSendButton(); // Hide send button
         }
       } catch (error) {
@@ -1175,6 +1230,8 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
           // Clear the input
           if (whatsappInput) {
             whatsappInput.textContent = '';
+            whatsappInput.innerHTML = ''; // Ensure completely empty
+            whatsappInput.setAttribute('dir', 'ltr'); // Reset to default direction
             whatsappSendBtn.style.display = 'none'; // Hide send button
           }
         }

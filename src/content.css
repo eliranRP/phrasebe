@@ -864,10 +864,25 @@
   left: 10px;
 }
 
+/* RTL placeholder positioning */
+.whatsapp-input[dir="rtl"]:empty::before {
+  left: auto;
+  right: 10px;
+}
+
 .whatsapp-input:focus {
   background: #ffffff;
   border-color: #9B7EDE;
   box-shadow: 0 0 0 2px rgba(155, 126, 222, 0.1);
+}
+
+/* RTL text direction support */
+.whatsapp-input[dir="rtl"] {
+  text-align: right;
+}
+
+.whatsapp-input[dir="ltr"] {
+  text-align: left;
 }
 
 .whatsapp-input::placeholder {
@@ -1103,6 +1118,12 @@
     position: absolute;
     top: 12px;
     left: 10px;
+  }
+
+  /* RTL placeholder positioning for dark mode */
+  .whatsapp-input[dir="rtl"]:empty::before {
+    left: auto;
+    right: 10px;
   }
 
   .whatsapp-input::placeholder {
