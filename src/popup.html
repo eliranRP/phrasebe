@@ -37,6 +37,85 @@
           </label>
         </div>
       </div>
+
+      <!-- Translation Settings -->
+      <div class="setting-item">
+        <div class="setting-content">
+          <div class="setting-info">
+            <div class="setting-label">Enable Translation Feature</div>
+            <div class="setting-description">Show translation suggestions when you select text on any website.</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="translationToggle" checked aria-label="Enable Translation Feature">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Language Settings -->
+      <div class="setting-item language-settings">
+        <div class="setting-content">
+          <div class="setting-info">
+            <div class="setting-label">Language Preferences</div>
+            <div class="setting-description">Set your mother tongue and second preferred language for automatic
+              translation.</div>
+          </div>
+          <div class="language-selectors">
+            <div class="language-selector">
+              <label for="sourceLanguage">Mother Tongue:</label>
+              <select id="sourceLanguage" class="language-dropdown">
+                <option value="en">English</option>
+                <option value="he">Hebrew</option>
+                <option value="es">Spanish</option>
+                <option value="fr">French</option>
+                <option value="de">German</option>
+                <option value="it">Italian</option>
+                <option value="pt">Portuguese</option>
+                <option value="ru">Russian</option>
+                <option value="ja">Japanese</option>
+                <option value="ko">Korean</option>
+                <option value="zh">Chinese</option>
+                <option value="ar">Arabic</option>
+              </select>
+            </div>
+            <div class="language-selector">
+              <label for="targetLanguage">Second Language:</label>
+              <select id="targetLanguage" class="language-dropdown">
+                <option value="he">Hebrew</option>
+                <option value="en">English</option>
+                <option value="es">Spanish</option>
+                <option value="fr">French</option>
+                <option value="de">German</option>
+                <option value="it">Italian</option>
+                <option value="pt">Portuguese</option>
+                <option value="ru">Russian</option>
+                <option value="ja">Japanese</option>
+                <option value="ko">Korean</option>
+                <option value="zh">Chinese</option>
+                <option value="ar">Arabic</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Blacklisted Sites -->
+      <div class="setting-item blacklist-settings">
+        <div class="setting-content">
+          <div class="setting-info">
+            <div class="setting-label">Blacklisted Sites</div>
+            <div class="setting-description">Sites where translation is disabled. Click to remove from blacklist.</div>
+          </div>
+          <div class="blacklist-container">
+            <div id="blacklistSites" class="blacklist-sites">
+              <!-- Blacklisted sites will be populated here -->
+            </div>
+            <div id="noBlacklistedSites" class="no-blacklisted-sites" style="display: none;">
+              No sites are currently blacklisted.
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
   <script src="popup.js"></script>

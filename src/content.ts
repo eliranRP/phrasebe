@@ -6,6 +6,70 @@ const CONSTANTS = {
   REPLACEMENT_TEXT: 'Call your mom',
 } as const;
 
+// Storage keys for content script
+const CONTENT_STORAGE_KEYS = {
+  TRANSLATION_ENABLED: 'phrasebe_translation_enabled',
+  SOURCE_LANGUAGE: 'phrasebe_source_language',
+  TARGET_LANGUAGE: 'phrasebe_target_language',
+} as const;
+
+// Check if translation feature is enabled
+const isTranslationEnabled = async (): Promise<boolean> => {
+  try {
+    const result = await chrome.storage.sync.get([CONTENT_STORAGE_KEYS.TRANSLATION_ENABLED]);
+    return result[CONTENT_STORAGE_KEYS.TRANSLATION_ENABLED] !== false; // Default to true
+  } catch (error) {
+    return true; // Default to enabled if error
+  }
+};
+
+// Check if current site is blacklisted
+const isSiteBlacklisted = async (): Promise<boolean> => {
+  try {
+    const result = await chrome.storage.sync.get(['phrasebe_site_blacklist']);
+    const blacklist = result['phrasebe_site_blacklist'] || [];
+    const currentDomain = window.location.hostname;
+    return blacklist.includes(currentDomain);
+  } catch (error) {
+    return false; // Default to not blacklisted if error
+  }
+};
+
+// Get user's preferred languages
+const getUserLanguages = async (): Promise<{ source: string; target: string }> => {
+  try {
+    const result = await chrome.storage.sync.get([
+      CONTENT_STORAGE_KEYS.SOURCE_LANGUAGE,
+      CONTENT_STORAGE_KEYS.TARGET_LANGUAGE,
+    ]);
+    return {
+      source: result[CONTENT_STORAGE_KEYS.SOURCE_LANGUAGE] || 'en',
+      target: result[CONTENT_STORAGE_KEYS.TARGET_LANGUAGE] || 'he',
+    };
+  } catch (error) {
+    return { source: 'en', target: 'he' }; // Default to English -> Hebrew
+  }
+};
+
+// Convert language code to full language name
+const getLanguageName = (languageCode: string): string => {
+  const languageMap: { [key: string]: string } = {
+    'en': 'English (American)',
+    'he': 'Hebrew',
+    'es': 'Spanish',
+    'fr': 'French',
+    'de': 'German',
+    'it': 'Italian',
+    'pt': 'Portuguese',
+    'ru': 'Russian',
+    'ja': 'Japanese',
+    'ko': 'Korean',
+    'zh': 'Chinese',
+    'ar': 'Arabic',
+  };
+  return languageMap[languageCode] || 'English (American)';
+};
+
 // Chrome AI Prompt API integration
 const checkAIAvailability = async (): Promise<boolean> => {
   try {
@@ -486,6 +550,11 @@ const createSuggestionBox = async (selectedText: string, position: { x: number; 
             <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" fill="currentColor"/>
           </svg>
         </button>
+        <button class="disable-site-btn" title="Disable translation on this site">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11H7v-2h10v2z" fill="currentColor"/>
+          </svg>
+        </button>
       </div>
       <div class="language-dropdown">
         <select class="language-select">
@@ -625,16 +694,77 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
     }
   });
 
+  // Helper function to convert language name to language code
+  const getLanguageCodeFromName = (languageName: string): string => {
+    const lang = languageName.toLowerCase();
+
+    if (lang.includes('english')) return 'en';
+    if (lang.includes('hebrew')) return 'he';
+    if (lang.includes('spanish')) return 'es';
+    if (lang.includes('french')) return 'fr';
+    if (lang.includes('german')) return 'de';
+    if (lang.includes('italian')) return 'it';
+    if (lang.includes('portuguese')) return 'pt';
+    if (lang.includes('russian')) return 'ru';
+    if (lang.includes('japanese')) return 'ja';
+    if (lang.includes('korean')) return 'ko';
+    if (lang.includes('chinese')) return 'zh';
+    if (lang.includes('arabic')) return 'ar';
+
+    // Default fallback
+    return 'en';
+  };
+
   // Auto-translate on text selection (show in box, don't replace text yet)
   const autoTranslate = async () => {
     try {
-      const { language } = await detectLanguage(selectedText);
-      const sourceLanguage = language;
-      const targetLanguage = language.toLowerCase().includes('english') ? 'Hebrew' : 'English (American)';
-      const translatedText = await translateText(selectedText, sourceLanguage, targetLanguage);
+      // Detect the language of the selected text
+      const { language: detectedLanguage } = await detectLanguage(selectedText);
+
+      // Get user's preferred languages
+      const userLanguages = await getUserLanguages();
+      const motherTongue = userLanguages.source;
+      const secondLanguage = userLanguages.target;
+
+      // Determine target language based on detected language and user preferences
+      let targetLanguage: string;
+      let sourceLanguageName: string;
+      let targetLanguageName: string;
+
+      // Convert detected language to language code for comparison
+      const detectedLanguageCode = getLanguageCodeFromName(detectedLanguage);
+
+      if (detectedLanguageCode === motherTongue) {
+        // If detected language is mother tongue, translate to second language
+        targetLanguage = secondLanguage;
+        sourceLanguageName = detectedLanguage;
+        targetLanguageName = getLanguageName(secondLanguage);
+      } else if (detectedLanguageCode === secondLanguage) {
+        // If detected language is second language, translate to mother tongue
+        targetLanguage = motherTongue;
+        sourceLanguageName = detectedLanguage;
+        targetLanguageName = getLanguageName(motherTongue);
+      } else {
+        // If detected language is neither preferred language, translate to mother tongue
+        targetLanguage = motherTongue;
+        sourceLanguageName = detectedLanguage;
+        targetLanguageName = getLanguageName(motherTongue);
+      }
+
+      console.log('Auto-translation decision:', {
+        detectedLanguage,
+        detectedLanguageCode,
+        motherTongue,
+        secondLanguage,
+        targetLanguage,
+        sourceLanguageName,
+        targetLanguageName
+      });
+
+      const translatedText = await translateText(selectedText, sourceLanguageName, targetLanguageName);
 
       // Determine direction based on the output language (translated text)
-      const outputDirection = targetLanguage.toLowerCase().includes('hebrew') ? 'rtl' : 'ltr';
+      const outputDirection = targetLanguage === 'he' || targetLanguage === 'ar' ? 'rtl' : 'ltr';
 
       // Update the suggestion box content with the translation
       if (suggestionBox) {
@@ -652,8 +782,7 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
         // Set the default language in dropdown
         const languageSelect = suggestionBox.querySelector('.language-select') as HTMLSelectElement;
         if (languageSelect) {
-          const targetLanguageCode = targetLanguage.toLowerCase().includes('hebrew') ? 'he' : 'en';
-          languageSelect.value = targetLanguageCode;
+          languageSelect.value = targetLanguage;
         }
       }
     } catch (error) {
@@ -805,6 +934,43 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
     });
   }
 
+  // Disable site button event listener
+  const disableSiteBtn = suggestionBox?.querySelector('.disable-site-btn') as HTMLButtonElement;
+  if (disableSiteBtn) {
+    disableSiteBtn.addEventListener('click', async () => {
+      try {
+        // Get current site domain
+        const currentDomain = window.location.hostname;
+
+        // Add to blacklist
+        const result = await chrome.storage.sync.get(['phrasebe_site_blacklist']);
+        const blacklist = result['phrasebe_site_blacklist'] || [];
+
+        if (!blacklist.includes(currentDomain)) {
+          blacklist.push(currentDomain);
+          await chrome.storage.sync.set({ 'phrasebe_site_blacklist': blacklist });
+        }
+
+        // Show feedback
+        const originalContent = disableSiteBtn.innerHTML;
+        disableSiteBtn.innerHTML = `
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/>
+          </svg>
+        `;
+        disableSiteBtn.style.background = '#10b981';
+        disableSiteBtn.title = 'Translation disabled on this site';
+
+        // Hide the suggestion box
+        hideSuggestionBox();
+
+        console.log('Translation disabled on site:', currentDomain);
+      } catch (error) {
+        console.error('Failed to disable translation on site:', error);
+      }
+    });
+  }
+
   // WhatsApp input event listener
   const whatsappInput = suggestionBox?.querySelector('.whatsapp-input') as HTMLInputElement;
   const whatsappSendBtn = suggestionBox?.querySelector('.whatsapp-send-btn') as HTMLButtonElement;
@@ -835,9 +1001,11 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
 
       // Show loading state
       const originalPlaceholder = whatsappInput.placeholder;
+      const originalContent = whatsappSendBtn?.innerHTML || '';
       whatsappInput.placeholder = 'Processing...';
       whatsappInput.disabled = true;
       if (whatsappSendBtn) {
+        whatsappSendBtn.innerHTML = '<div class="loading-spinner"></div>';
         whatsappSendBtn.disabled = true;
         whatsappSendBtn.style.opacity = '0.6';
         whatsappSendBtn.classList.add('loading'); // Add green border animation
@@ -870,6 +1038,7 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
         whatsappInput.placeholder = originalPlaceholder;
         whatsappInput.disabled = false;
         if (whatsappSendBtn) {
+          whatsappSendBtn.innerHTML = originalContent;
           whatsappSendBtn.disabled = false;
           whatsappSendBtn.style.opacity = '1';
           whatsappSendBtn.classList.remove('loading'); // Remove green border animation
@@ -970,7 +1139,19 @@ const hideSuggestionBox = (): void => {
   document.body.style.userSelect = '';
 };
 
-const handleTextSelection = (): void => {
+const handleTextSelection = async (): Promise<void> => {
+  // Check if translation feature is enabled
+  const translationEnabled = await isTranslationEnabled();
+  if (!translationEnabled) {
+    return; // Don't show suggestion box if translation is disabled
+  }
+
+  // Check if current site is blacklisted
+  const siteBlacklisted = await isSiteBlacklisted();
+  if (siteBlacklisted) {
+    return; // Don't show suggestion box if site is blacklisted
+  }
+
   // Don't handle text selection if we're currently dragging or just finished dragging
   if (isDragging || dragJustEnded) {
     return;
