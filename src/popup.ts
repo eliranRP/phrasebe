@@ -1,4 +1,4 @@
-// PhraseBE Popup Script - Organized Grammarly Design
+// PhraseBE Popup Script - Simple and Clean
 
 // Storage keys
 const STORAGE_KEYS = {

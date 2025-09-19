@@ -5,30 +5,37 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PhraseBE Settings</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="popup.css" />
 </head>
 
 <body>
-  <div class="settings-container">
+  <div>
     <!-- Header -->
     <div class="header">
       <div class="logo-container">
         <div class="logo">
           <img src="assets/icons/papaer_airplane.png" alt="PhraseBE" />
         </div>
-        <span class="brand-name">phrasebe</span>
+        <span class="brand-name">Phrasebe</span>
       </div>
     </div>
 
     <!-- Settings Section -->
     <div class="settings-section">
-      <!-- Single Toggle Setting -->
+      <!-- Main Toggle Setting -->
       <div class="setting-item">
-        <span class="setting-label">Enable bubble in Gmail</span>
-        <label class="toggle-switch">
-          <input type="checkbox" id="bubbleToggle" checked>
-          <span class="toggle-slider"></span>
-        </label>
+        <div class="setting-content">
+          <div class="setting-info">
+            <div class="setting-label">Enable Smart Writing Assistant</div>
+            <div class="setting-description">Automatically check and improve your writing across all browser inputs and
+              text fields.</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="bubbleToggle" checked aria-label="Enable Smart Writing Assistant">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
       </div>
     </div>
   </div>

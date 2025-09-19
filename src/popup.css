@@ -1,4 +1,43 @@
-/* PhraseBE Popup Styles - Organized Grammarly Design */
+/* ==========================================================================
+   PhraseBE Popup Styles - Modern Design System
+   ========================================================================== */
+
+:root {
+  --primary-purple: #9B7EDE;
+  --primary-teal: #4ECDC4;
+  --background-dark: #0F0F14;
+  --surface-dark: #1A1A22;
+  --surface-elevated: #242430;
+  --text-primary: #FFFFFF;
+  --text-secondary: #A0A0AB;
+  --border-subtle: #2A2A36;
+  --pro-gradient: linear-gradient(135deg, #FF6B6B, #4ECDC4);
+  --toggle-active: #9B7EDE;
+  --toggle-inactive: #3A3A46;
+
+  /* Design system spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+
+  /* Typography scale */
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 18px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --text-3xl: 32px;
+
+  /* Border radius */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+}
 
 * {
   margin: 0;
@@ -7,133 +46,145 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #1a1a1a;
-  color: white;
-  width: 280px;
-  min-height: 200px;
-  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  color: var(--text-primary);
+  background: var(--surface-dark);
   padding: 0;
-}
-
-.settings-container {
-  background: #2d2d2d;
-  border-radius: 8px;
-  padding: 16px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-  min-height: 200px;
-}
-
-/* Header with logo */
-.header {
+  margin: 0;
+  line-height: 1.5;
+  font-feature-settings: 'kern' 1, 'liga' 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
+  width: 400px;
+  background: var(--surface-dark);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0;
+  padding: var(--space-md);
+  margin: 0;
+}
+
+/* Header */
+.header {
+  margin-top: calc(-1 * var(--space-md));
+  margin-bottom: var(--space-lg);
+  padding-bottom: var(--space-lg);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .logo-container {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-md);
 }
 
 .logo {
-  width: 24px;
-  height: 24px;
-  background: #9B72FF;
-  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  background: var(--primary-purple);
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(155, 126, 222, 0.3);
   overflow: hidden;
 }
 
 .logo img {
-  width: 14px;
-  height: 14px;
+  width: 24px;
+  height: 24px;
   filter: brightness(0) invert(1);
+  z-index: 2;
+  position: relative;
 }
 
 .brand-name {
-  font-size: 16px;
+  font-size: var(--text-sm);
   font-weight: 600;
-  color: white;
+  color: var(--text-primary);
+  letter-spacing: -0.025em;
 }
 
-
-/* Settings sections */
+/* Settings Section */
 .settings-section {
   margin-bottom: 0;
 }
 
 .section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: var(--space-sm);
 }
 
 .section-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: white;
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--space-sm);
+  letter-spacing: -0.025em;
+  line-height: 1.2;
 }
 
-.all-settings-link {
-  color: #9B72FF;
-  text-decoration: none;
-  font-size: 16px;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: color 0.2s ease;
-  cursor: pointer;
+.section-subtitle {
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+  font-weight: 400;
+  margin-bottom: var(--space-lg);
 }
 
-.all-settings-link:hover {
-  color: #8B5CF6;
-}
-
-.external-icon {
-  width: 16px;
-  height: 16px;
-  opacity: 0.8;
-  color: #9B72FF;
-}
-
-/* Toggle setting item */
+/* Toggle Setting Item */
 .setting-item {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.setting-item:hover {
+  border-color: var(--primary-purple);
+  box-shadow: 0 0 0 1px rgba(155, 126, 222, 0.1);
+}
+
+.setting-content {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid #404040;
+  align-items: flex-start;
+  gap: var(--space-lg);
 }
 
-.setting-item:last-child {
-  border-bottom: none;
+.setting-info {
+  flex: 1;
 }
 
 .setting-label {
-  font-size: 14px;
-  color: white;
-  font-weight: 400;
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  font-weight: 500;
+  margin-bottom: var(--space-xs);
+  line-height: 1.4;
 }
 
-/* Toggle switch */
+.setting-description {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+/* Enhanced Toggle Switch */
 .toggle-switch {
   position: relative;
-  width: 44px;
-  height: 24px;
+  width: 32px;
+  height: 20px;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .toggle-switch input {
   opacity: 0;
   width: 0;
   height: 0;
+  position: absolute;
 }
 
 .toggle-slider {
@@ -142,107 +193,85 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background: #404040;
-  border-radius: 32px;
-  transition: all 0.3s ease;
+  background: var(--toggle-inactive);
+  border-radius: var(--radius-full);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 2px solid transparent;
 }
 
 .toggle-slider:before {
   position: absolute;
   content: "";
-  height: 18px;
-  width: 18px;
-  left: 3px;
-  bottom: 3px;
+  height: 14px;
+  width: 14px;
+  left: 2px;
+  bottom: 2px;
   background: white;
   border-radius: 50%;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.2),
+    0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .toggle-switch input:checked+.toggle-slider {
-  background: #9B72FF;
+  background: var(--toggle-active);
+  box-shadow: 0 0 0 2px rgba(155, 126, 222, 0.2);
 }
 
 .toggle-switch input:checked+.toggle-slider:before {
-  transform: translateX(20px);
+  transform: translateX(12px);
+  background: white;
 }
 
-/* Check icon inside toggle when active */
-.toggle-slider::after {
-  content: "✓";
-  position: absolute;
-  top: 50%;
-  left: 12px;
-  transform: translateY(-50%);
-  color: #9B72FF;
-  font-weight: bold;
-  font-size: 14px;
-  opacity: 0;
-  transition: opacity 0.3s ease;
+.toggle-switch input:focus+.toggle-slider {
+  outline: 2px solid var(--primary-purple);
+  outline-offset: 2px;
 }
 
-.toggle-switch input:checked+.toggle-slider::after {
-  opacity: 1;
-}
-
-/* Dark mode detection and theme adaptation */
-@media (prefers-color-scheme: light) {
+/* Responsive Design */
+@media (max-width: 640px) {
   body {
-    background: #ffffff;
-    color: #1a1a1a;
+    padding: var(--space-md);
+    padding-top: var(--space-2xl);
   }
 
   .settings-container {
-    background: #f8f9fa;
+    padding: var(--space-lg);
+  }
+
+  .header {
+    flex-direction: column;
+    gap: var(--space-md);
+    align-items: flex-start;
+  }
+
+  .section-title {
+    font-size: var(--text-sm);
+  }
+
+  .setting-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-md);
+  }
+
+  .toggle-switch {
+    align-self: flex-end;
+  }
+}
+
+@media (max-width: 480px) {
+  .logo {
+    width: 36px;
+    height: 36px;
   }
 
   .brand-name {
-    color: #1a1a1a;
-  }
-
-  .section-title {
-    color: #1a1a1a;
-  }
-
-  .setting-label {
-    color: #1a1a1a;
+    font-size: var(--text-lg);
   }
 
   .setting-item {
-    border-bottom: 1px solid #e0e0e0;
-  }
-
-  .toggle-slider {
-    background: #e0e0e0;
-  }
-
-  .toggle-slider:before {
-    background: #ffffff;
-  }
-}
-
-/* Chrome extension popup specific styles */
-body {
-  margin: 0;
-  padding: 0;
-}
-
-/* Responsive design */
-@media (max-width: 450px) {
-  body {
-    width: 350px;
-  }
-
-  .settings-container {
-    padding: 20px;
-  }
-
-  .section-title {
-    font-size: 24px;
-  }
-
-  .setting-label {
-    font-size: 16px;
+    padding: var(--space-md);
   }
 }
