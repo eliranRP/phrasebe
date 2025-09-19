@@ -824,7 +824,7 @@
   flex: 1 1 auto;
   min-width: 0;
   /* Allow shrinking on narrow screens */
-  padding: 8px 10px;
+  padding: 12px 10px;
   padding-right: 50px;
   /* Space for send button */
   min-height: 24px;
@@ -833,6 +833,8 @@
   /* Cap height */
   overflow-y: auto;
   /* Scroll past the cap */
+  position: relative;
+  /* For absolute positioned placeholder */
 
   /* Styling */
   background: #f9f9f9;
@@ -844,6 +846,7 @@
   color: #333333;
   white-space: pre-wrap;
   word-break: break-word;
+  line-height: 1.4;
 
   /* Interaction */
   outline: none;
@@ -856,6 +859,9 @@
   content: "Enter your own prompt";
   color: #a8adb3;
   pointer-events: none;
+  position: absolute;
+  top: 12px;
+  left: 10px;
 }
 
 .whatsapp-input:focus {
@@ -1094,6 +1100,9 @@
 
   .whatsapp-input:empty::before {
     color: #888888;
+    position: absolute;
+    top: 12px;
+    left: 10px;
   }
 
   .whatsapp-input::placeholder {
