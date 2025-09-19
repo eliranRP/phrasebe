@@ -583,7 +583,7 @@ const createSuggestionBox = async (selectedText: string, position: { x: number; 
     </div>
     <div class="suggestion-actions">
       <div class="whatsapp-input-container">
-        <input type="text" placeholder="Enter your own prompt" class="whatsapp-input">
+        <div class="whatsapp-input" contenteditable="true" role="textbox" aria-multiline="true"></div>
         <button class="whatsapp-send-btn" title="Send prompt" style="display: none;">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
             <path d="M1.101 21.757L23.8 12.028 1.101 2.3l.011 7.912 13.623 1.816-13.623 1.817-.011 7.912z" fill="currentColor"/>
@@ -1028,14 +1028,15 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
   }
 
   // WhatsApp input event listener
-  const whatsappInput = suggestionBox?.querySelector('.whatsapp-input') as HTMLInputElement;
+  const whatsappInput = suggestionBox?.querySelector('.whatsapp-input') as HTMLDivElement;
   const whatsappSendBtn = suggestionBox?.querySelector('.whatsapp-send-btn') as HTMLButtonElement;
 
   if (whatsappInput) {
     // Show/hide send button based on input content
     const toggleSendButton = () => {
       if (whatsappSendBtn) {
-        if (whatsappInput.value.trim().length > 0) {
+        const text = whatsappInput.textContent?.trim() || '';
+        if (text.length > 0) {
           whatsappSendBtn.style.display = 'flex';
         } else {
           whatsappSendBtn.style.display = 'none';
@@ -1048,7 +1049,7 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
     whatsappInput.addEventListener('keyup', toggleSendButton);
 
     const handleCustomPrompt = async () => {
-      const customPrompt = whatsappInput.value.trim();
+      const customPrompt = whatsappInput.textContent?.trim() || '';
       if (!customPrompt) return;
 
       // Get the current translated text from the suggestion box
@@ -1056,10 +1057,8 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
       const translatedText = headerText ? headerText.textContent || '' : selectedText;
 
       // Show loading state
-      const originalPlaceholder = whatsappInput.placeholder;
       const originalContent = whatsappSendBtn?.innerHTML || '';
-      whatsappInput.placeholder = 'Processing...';
-      whatsappInput.disabled = true;
+      whatsappInput.contentEditable = 'false'; // Disable editing during processing
       if (whatsappSendBtn) {
         whatsappSendBtn.innerHTML = '<div class="loading-spinner"></div>';
         whatsappSendBtn.disabled = true;
@@ -1092,7 +1091,7 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
           }
 
           // Clear the input
-          whatsappInput.value = '';
+          whatsappInput.textContent = '';
           toggleSendButton(); // Hide send button
         }
       } catch (error) {
@@ -1104,8 +1103,7 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
         }
       } finally {
         // Restore input state
-        whatsappInput.placeholder = originalPlaceholder;
-        whatsappInput.disabled = false;
+        whatsappInput.contentEditable = 'true'; // Re-enable editing
         if (whatsappSendBtn) {
           whatsappSendBtn.innerHTML = originalContent;
           whatsappSendBtn.disabled = false;
@@ -1115,10 +1113,17 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
       }
     };
 
-    // Handle Enter key in input
-    whatsappInput.addEventListener('keypress', (e) => {
+    // Handle Enter key in contenteditable
+    whatsappInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
-        handleCustomPrompt();
+        if (e.shiftKey) {
+          // Shift+Enter: Allow new line (default behavior)
+          return;
+        } else {
+          // Enter: Send prompt
+          e.preventDefault();
+          handleCustomPrompt();
+        }
       }
     });
   }
@@ -1126,7 +1131,7 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
   // WhatsApp send button event listener
   if (whatsappSendBtn) {
     whatsappSendBtn.addEventListener('click', async () => {
-      const customPrompt = whatsappInput?.value.trim();
+      const customPrompt = whatsappInput?.textContent?.trim() || '';
       if (!customPrompt) return;
 
       // Get the current translated text from the suggestion box
@@ -1140,7 +1145,7 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
       whatsappSendBtn.style.opacity = '0.6';
       whatsappSendBtn.classList.add('loading'); // Add green border animation
       if (whatsappInput) {
-        whatsappInput.disabled = true;
+        whatsappInput.contentEditable = 'false'; // Disable editing during processing
       }
 
       try {
@@ -1169,7 +1174,7 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
 
           // Clear the input
           if (whatsappInput) {
-            whatsappInput.value = '';
+            whatsappInput.textContent = '';
             whatsappSendBtn.style.display = 'none'; // Hide send button
           }
         }
@@ -1187,7 +1192,7 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
         whatsappSendBtn.style.opacity = '1';
         whatsappSendBtn.classList.remove('loading'); // Remove green border animation
         if (whatsappInput) {
-          whatsappInput.disabled = false;
+          whatsappInput.contentEditable = 'true'; // Re-enable editing
         }
       }
     });
