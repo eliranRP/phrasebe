@@ -583,7 +583,7 @@ const createSuggestionBox = async (selectedText: string, position: { x: number; 
     </div>
     <div class="suggestion-actions">
       <div class="whatsapp-input-container">
-        <textarea placeholder="Enter your own prompt" class="whatsapp-input" rows="1"></textarea>
+        <input type="text" placeholder="Enter your own prompt" class="whatsapp-input">
         <button class="whatsapp-send-btn" title="Send prompt" style="display: none;">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
             <path d="M1.101 21.757L23.8 12.028 1.101 2.3l.011 7.912 13.623 1.816-13.623 1.817-.011 7.912z" fill="currentColor"/>
@@ -1000,49 +1000,10 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
   }
 
   // WhatsApp input event listener
-  const whatsappInput = suggestionBox?.querySelector('.whatsapp-input') as HTMLTextAreaElement;
+  const whatsappInput = suggestionBox?.querySelector('.whatsapp-input') as HTMLInputElement;
   const whatsappSendBtn = suggestionBox?.querySelector('.whatsapp-send-btn') as HTMLButtonElement;
 
-  // Auto-resize function (accessible to both input and send button handlers)
-  const autoResize = () => {
-    if (!whatsappInput) return;
-
-    // Store current scroll position
-    const scrollTop = whatsappInput.scrollTop;
-
-    // Reset height to auto to get the correct scrollHeight
-    whatsappInput.style.height = 'auto';
-
-    // Force a reflow to ensure the height is calculated
-    whatsappInput.offsetHeight;
-
-    // Get the scroll height (content height)
-    const scrollHeight = whatsappInput.scrollHeight;
-    const maxHeight = 120; // Maximum height in pixels
-    const minHeight = 24; // Minimum height in pixels
-
-    // Calculate new height - ensure it resets to minHeight when empty
-    const newHeight = Math.max(minHeight, Math.min(scrollHeight, maxHeight));
-
-    // Set the new height
-    whatsappInput.style.height = newHeight + 'px';
-
-    // Restore scroll position
-    whatsappInput.scrollTop = scrollTop;
-
-    // Show scrollbar if content exceeds max height
-    if (scrollHeight > maxHeight) {
-      whatsappInput.style.overflowY = 'auto';
-    } else {
-      whatsappInput.style.overflowY = 'hidden';
-    }
-
-    // Force a final reflow to ensure the height is applied
-    whatsappInput.offsetHeight;
-  };
-
   if (whatsappInput) {
-
     // Show/hide send button based on input content
     const toggleSendButton = () => {
       if (whatsappSendBtn) {
@@ -1054,18 +1015,9 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
       }
     };
 
-    // Initialize the input height
-    autoResize();
-
     // Handle input changes
-    whatsappInput.addEventListener('input', () => {
-      autoResize();
-      toggleSendButton();
-    });
-    whatsappInput.addEventListener('keyup', () => {
-      autoResize();
-      toggleSendButton();
-    });
+    whatsappInput.addEventListener('input', toggleSendButton);
+    whatsappInput.addEventListener('keyup', toggleSendButton);
 
     const handleCustomPrompt = async () => {
       const customPrompt = whatsappInput.value.trim();
@@ -1113,7 +1065,6 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
 
           // Clear the input
           whatsappInput.value = '';
-          autoResize(); // Reset to original size
           toggleSendButton(); // Hide send button
         }
       } catch (error) {
@@ -1137,16 +1088,9 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
     };
 
     // Handle Enter key in input
-    whatsappInput.addEventListener('keydown', (e) => {
+    whatsappInput.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') {
-        if (e.shiftKey) {
-          // Shift+Enter: Allow new line (default behavior)
-          return;
-        } else {
-          // Enter: Send prompt
-          e.preventDefault();
-          handleCustomPrompt();
-        }
+        handleCustomPrompt();
       }
     });
   }
@@ -1198,7 +1142,6 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
           // Clear the input
           if (whatsappInput) {
             whatsappInput.value = '';
-            autoResize(); // Reset to original size
             whatsappSendBtn.style.display = 'none'; // Hide send button
           }
         }
