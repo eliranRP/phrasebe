@@ -108,3 +108,6 @@ key.pem
 tmp/
 temp/
 *.pdf
+
+# IDE history files
+.history/
