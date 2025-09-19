@@ -3,13 +3,41 @@
   "name": "PhraseBE",
   "description": "Simple Chrome extension that opens a textarea popup for phrasing.",
   "version": "0.1.0",
+  "icons": {
+    "16": "assets/icons/icon_16x16.png",
+    "32": "assets/icons/icon_32x32.png",
+    "48": "assets/icons/icon_48x48.png",
+    "96": "assets/icons/icon_96x96.png",
+    "128": "assets/icons/icon_128x128.png"
+  },
   "action": {
-    "default_title": "PhraseBE",
-    "default_popup": "src/popup.html"
+    "default_title": "BePhrase",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "assets/icons/icon_16x16.png",
+      "32": "assets/icons/icon_32x32.png"
+    }
   },
   "background": {
-    "service_worker": "src/background.js"
+    "service_worker": "background.js"
   },
-  "permissions": [],
-  "host_permissions": []
+  "content_scripts": [
+    {
+      "matches": ["https://*/*", "http://*/*"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_end"
+    }
+  ],
+  "permissions": ["storage", "language-model"],
+  "host_permissions": ["https://*/*", "http://*/*"],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self';"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["assets/icons/papaer_airplane.png"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 }

@@ -1,76 +1,354 @@
-/* Floating Rephrase bubble */
-.phrasebe-bubble {
-  position: fixed;
-  z-index: 2147483647;
-  display: none;
-  padding: 6px 10px;
-  font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif;
-  font-size: 12px;
-  font-weight: 600;
-  color: #064e3b;
-  background: #d1fae5;
-  border: 1px solid #10b981;
-  border-radius: 999px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-  cursor: pointer;
-  user-select: none;
-}
-.phrasebe-bubble:hover { background: #a7f3d0; }
+/* ==========================================================================
+   PhraseBE Content Script Styles
+   ========================================================================== */
 
-/* Floating Chat panel */
-.phrasebe-chat {
-  position: fixed;
-  z-index: 2147483647;
-  display: none;
-  width: 320px;
-  max-height: 60vh;
-  background: #ffffff;
-  border: 1px solid rgba(0,0,0,0.1);
-  border-radius: 12px;
-  box-shadow: 0 12px 32px rgba(0,0,0,0.18);
-  overflow: hidden;
+/* CSS Custom Properties (CSS Variables) */
+:root {
+  /* Colors - Light Theme */
+  --phrasebe-color-primary: #10b981;
+  --phrasebe-color-primary-hover: #059669;
+  --phrasebe-color-primary-active: #047857;
+  --phrasebe-color-background: #ffffff;
+  --phrasebe-color-background-hover: #f9fafb;
+  --phrasebe-color-background-secondary: #fafafa;
+  --phrasebe-color-border: #e5e7eb;
+  --phrasebe-color-border-light: rgba(0, 0, 0, 0.06);
+  --phrasebe-color-text: #111827;
+  --phrasebe-color-text-secondary: #6b7280;
+  --phrasebe-color-shadow: rgba(0, 0, 0, 0.15);
+  --phrasebe-color-shadow-hover: rgba(0, 0, 0, 0.2);
+  --phrasebe-color-shadow-large: rgba(0, 0, 0, 0.18);
+
+  /* Dark Theme Colors */
+  --phrasebe-color-background-dark: #1f2937;
+  --phrasebe-color-background-hover-dark: #374151;
+  --phrasebe-color-background-secondary-dark: #111827;
+  --phrasebe-color-border-dark: #4b5563;
+  --phrasebe-color-border-light-dark: rgba(255, 255, 255, 0.1);
+  --phrasebe-color-text-dark: #f9fafb;
+  --phrasebe-color-text-secondary-dark: #d1d5db;
+  --phrasebe-color-shadow-dark: rgba(0, 0, 0, 0.3);
+  --phrasebe-color-shadow-hover-dark: rgba(0, 0, 0, 0.4);
+  --phrasebe-color-shadow-large-dark: rgba(0, 0, 0, 0.5);
+
+  /* Spacing */
+  --phrasebe-spacing-xs: 2px;
+  --phrasebe-spacing-sm: 4px;
+  --phrasebe-spacing-md: 8px;
+  --phrasebe-spacing-lg: 12px;
+  --phrasebe-spacing-xl: 16px;
+  --phrasebe-spacing-2xl: 20px;
+
+  /* Border Radius */
+  --phrasebe-radius-sm: 6px;
+  --phrasebe-radius-md: 8px;
+  --phrasebe-radius-lg: 12px;
+  --phrasebe-radius-full: 50%;
+
+  /* Typography */
+  --phrasebe-font-size-xs: 11px;
+  --phrasebe-font-size-sm: 12px;
+  --phrasebe-font-size-md: 13px;
+  --phrasebe-font-size-lg: 14px;
+  --phrasebe-font-weight-normal: 400;
+  --phrasebe-font-weight-medium: 500;
+  --phrasebe-font-weight-semibold: 600;
+
+  /* Transitions */
+  --phrasebe-transition-fast: 0.15s ease;
+  --phrasebe-transition-normal: 0.2s ease;
+  --phrasebe-transition-slow: 0.3s ease;
+
+  /* Z-Index - Use maximum possible z-index */
+  --phrasebe-z-bubble: 2147483647;
+  --phrasebe-z-chat: 2147483647;
+
+  /* Sizes */
+  --phrasebe-bubble-size: 34px;
+  --phrasebe-icon-size: 30px;
+  --phrasebe-chat-width: 320px;
+  --phrasebe-chat-max-height: 60vh;
 }
+
+/* Dark Theme Support */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --phrasebe-color-background: var(--phrasebe-color-background-dark);
+    --phrasebe-color-background-hover: var(--phrasebe-color-background-hover-dark);
+    --phrasebe-color-background-secondary: var(--phrasebe-color-background-secondary-dark);
+    --phrasebe-color-border: var(--phrasebe-color-border-dark);
+    --phrasebe-color-border-light: var(--phrasebe-color-border-light-dark);
+    --phrasebe-color-text: var(--phrasebe-color-text-dark);
+    --phrasebe-color-text-secondary: var(--phrasebe-color-text-secondary-dark);
+    --phrasebe-color-shadow: var(--phrasebe-color-shadow-dark);
+    --phrasebe-color-shadow-hover: var(--phrasebe-color-shadow-hover-dark);
+    --phrasebe-color-shadow-large: var(--phrasebe-color-shadow-large-dark);
+  }
+}
+
+/* ==========================================================================
+   Floating Rephrase Bubble
+   ========================================================================== */
+
+.phrasebe-bubble {
+  /* Layout */
+  position: fixed !important;
+  z-index: 2147483647 !important; /* Maximum z-index */
+  display: flex !important;
+  width: var(--phrasebe-bubble-size);
+  height: var(--phrasebe-bubble-size);
+  
+  /* Flexbox for centering */
+  align-items: center;
+  justify-content: center;
+  
+  /* Styling */
+  padding: var(--phrasebe-spacing-xs);
+  background: var(--phrasebe-color-background);
+  border: 1px solid var(--phrasebe-color-border);
+  border-radius: var(--phrasebe-radius-full);
+  box-shadow: 0 2px 6px var(--phrasebe-color-shadow);
+  
+  /* Interaction */
+  cursor: pointer !important;
+  user-select: none;
+  pointer-events: auto !important;
+  
+  /* Performance */
+  will-change: transform, box-shadow, opacity, visibility;
+  transition: all var(--phrasebe-transition-normal);
+  
+  /* Always visible for debugging */
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.phrasebe-bubble:hover {
+  background: var(--phrasebe-color-background-hover);
+  transform: scale(1.1);
+  box-shadow: 0 3px 8px var(--phrasebe-color-shadow-hover);
+}
+
+.phrasebe-bubble:active {
+  transform: scale(0.95);
+}
+
+.phrasebe-bubble:focus {
+  outline: 2px solid var(--phrasebe-color-primary);
+  outline-offset: 2px;
+}
+
+.phrasebe-icon {
+  width: var(--phrasebe-icon-size);
+  height: var(--phrasebe-icon-size);
+  object-fit: contain;
+  display: block;
+}
+
+/* ==========================================================================
+   Floating Chat Panel
+   ========================================================================== */
+
+.phrasebe-chat {
+  /* Layout */
+  position: fixed;
+  z-index: var(--phrasebe-z-chat);
+  display: none;
+  width: var(--phrasebe-chat-width);
+  max-height: var(--phrasebe-chat-max-height);
+  
+  /* Styling */
+  background: var(--phrasebe-color-background);
+  border: 1px solid var(--phrasebe-color-border-light);
+  border-radius: var(--phrasebe-radius-lg);
+  box-shadow: 0 12px 32px var(--phrasebe-color-shadow-large);
+  
+  /* Overflow */
+  overflow: hidden;
+  
+  /* Performance */
+  will-change: transform, opacity;
+  transition: all var(--phrasebe-transition-normal);
+}
+
 .phrasebe-chat-header {
+  /* Layout */
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 10px;
-  background: #f9fafb;
-  border-bottom: 1px solid rgba(0,0,0,0.06);
-  font-size: 12px;
-  font-weight: 600;
+  
+  /* Styling */
+  padding: var(--phrasebe-spacing-md) var(--phrasebe-spacing-lg);
+  background: var(--phrasebe-color-background-secondary);
+  border-bottom: 1px solid var(--phrasebe-color-border-light);
+  
+  /* Typography */
+  font-size: var(--phrasebe-font-size-sm);
+  font-weight: var(--phrasebe-font-weight-semibold);
+  color: var(--phrasebe-color-text);
 }
+
 .phrasebe-chat-body {
-  padding: 10px;
+  padding: var(--phrasebe-spacing-lg);
 }
+
 .phrasebe-chat-textarea {
+  /* Layout */
   width: 100%;
   min-height: 120px;
   resize: vertical;
-  padding: 8px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  
+  /* Styling */
+  padding: var(--phrasebe-spacing-md);
+  border: 1px solid var(--phrasebe-color-border);
+  border-radius: var(--phrasebe-radius-md);
+  background: var(--phrasebe-color-background);
+  
+  /* Typography */
   font-family: inherit;
-  font-size: 13px;
+  font-size: var(--phrasebe-font-size-md);
+  color: var(--phrasebe-color-text);
+  line-height: 1.5;
 }
+
+.phrasebe-chat-textarea:focus {
+  outline: none;
+  border-color: var(--phrasebe-color-primary);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.phrasebe-chat-textarea::placeholder {
+  color: var(--phrasebe-color-text-secondary);
+}
+
 .phrasebe-chat-actions {
+  /* Layout */
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  padding: 10px;
-  border-top: 1px solid rgba(0,0,0,0.06);
-  background: #fafafa;
+  gap: var(--phrasebe-spacing-md);
+  
+  /* Styling */
+  padding: var(--phrasebe-spacing-lg);
+  border-top: 1px solid var(--phrasebe-color-border-light);
+  background: var(--phrasebe-color-background-secondary);
 }
+
+/* ==========================================================================
+   Buttons
+   ========================================================================== */
+
 .phrasebe-button {
-  padding: 6px 10px;
-  border-radius: 8px;
-  border: 1px solid #d1d5db;
-  background: #fff;
+  /* Layout */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  
+  /* Styling */
+  padding: var(--phrasebe-spacing-sm) var(--phrasebe-spacing-lg);
+  border: 1px solid var(--phrasebe-color-border);
+  border-radius: var(--phrasebe-radius-md);
+  background: var(--phrasebe-color-background);
+  
+  /* Typography */
+  font-size: var(--phrasebe-font-size-sm);
+  font-weight: var(--phrasebe-font-weight-medium);
+  color: var(--phrasebe-color-text);
+  
+  /* Interaction */
   cursor: pointer;
-  font-size: 12px;
+  user-select: none;
+  
+  /* Performance */
+  will-change: background-color, border-color, transform;
+  transition: all var(--phrasebe-transition-fast);
 }
+
+.phrasebe-button:hover {
+  background: var(--phrasebe-color-background-hover);
+  border-color: var(--phrasebe-color-border);
+}
+
+.phrasebe-button:active {
+  transform: translateY(1px);
+}
+
+.phrasebe-button:focus {
+  outline: none;
+  border-color: var(--phrasebe-color-primary);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
 .phrasebe-button.primary {
-  background: #10b981;
-  color: #fff;
-  border-color: #10b981;
+  background: var(--phrasebe-color-primary);
+  color: var(--phrasebe-color-background);
+  border-color: var(--phrasebe-color-primary);
+}
+
+.phrasebe-button.primary:hover {
+  background: var(--phrasebe-color-primary-hover);
+  border-color: var(--phrasebe-color-primary-hover);
+}
+
+.phrasebe-button.primary:active {
+  background: var(--phrasebe-color-primary-active);
+  border-color: var(--phrasebe-color-primary-active);
+}
+
+.phrasebe-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   Responsive Design
+   ========================================================================== */
+
+@media (max-width: 480px) {
+  :root {
+    --phrasebe-chat-width: 280px;
+    --phrasebe-chat-max-height: 50vh;
+  }
+}
+
+@media (max-width: 320px) {
+  :root {
+    --phrasebe-chat-width: 260px;
+    --phrasebe-bubble-size: 20px;
+    --phrasebe-icon-size: 16px;
+  }
+}
+
+/* ==========================================================================
+   High Contrast Mode Support
+   ========================================================================== */
+
+@media (prefers-contrast: high) {
+  :root {
+    --phrasebe-color-border: #000000;
+    --phrasebe-color-border-light: #000000;
+    --phrasebe-color-shadow: rgba(0, 0, 0, 0.5);
+    --phrasebe-color-shadow-hover: rgba(0, 0, 0, 0.7);
+    --phrasebe-color-shadow-large: rgba(0, 0, 0, 0.8);
+  }
+}
+
+/* ==========================================================================
+   Reduced Motion Support
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .phrasebe-bubble,
+  .phrasebe-chat,
+  .phrasebe-button {
+    transition: none;
+  }
+  
+  .phrasebe-bubble:hover {
+    transform: none;
+  }
+  
+  .phrasebe-button:active {
+    transform: none;
+  }
 }
