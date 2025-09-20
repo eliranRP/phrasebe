@@ -86,7 +86,7 @@ const checkAIAvailability = async (): Promise<boolean> => {
   }
 };
 
-const createAISession = async (): Promise<LanguageModelSession> => {
+const createAISession = async (outputLanguage: string = "en"): Promise<LanguageModelSession> => {
   const availability = await LanguageModel.availability();
 
   if (availability === 'downloadable') {
@@ -98,7 +98,7 @@ const createAISession = async (): Promise<LanguageModelSession> => {
       role: "system",
       content: "You are a professional email writing assistant. You help users write concise, email body content based on their instructions. Always respond with only the email body content - no subject lines, no placeholders like [Name] or [Your Name], and no explanations. Keep responses brief and to the point."
     }],
-    outputLanguage: "en", // Specify English as output language to prevent crashes
+    outputLanguage: outputLanguage, // Specify output language to prevent crashes
     monitor(m: LanguageModelMonitor) {
       m.addEventListener('downloadprogress', (e: LanguageModelDownloadProgressEvent) => {
         // Download progress
@@ -260,10 +260,31 @@ const detectLanguage = async (text: string): Promise<{ language: string; directi
 };
 
 // Intelligent Task Classification and Routing System
+const createClassificationSession = async (): Promise<LanguageModelSession> => {
+  const availability = await LanguageModel.availability();
+
+  if (availability === 'downloadable') {
+    // Model needs to be downloaded
+  }
+
+  return await LanguageModel.create({
+    initialPrompts: [{
+      role: "system",
+      content: "You are a task classification assistant. Analyze user requests and classify them into specific task types. Always respond with valid JSON format only."
+    }],
+    outputLanguage: "en", // Specify English as output language
+    monitor(m: LanguageModelMonitor) {
+      m.addEventListener('downloadprogress', (e: LanguageModelDownloadProgressEvent) => {
+        // Download progress
+      });
+    },
+  });
+};
+
 const classifyTask = async (userPrompt: string, contextText?: string): Promise<TaskClassification> => {
   try {
-    const session = await createAISession();
-    
+    const session = await createClassificationSession();
+
     const classificationPrompt = `Analyze this user request and classify it into one of these task types:
 - "rewrite": User wants to improve, rephrase, or restructure existing text
 - "write": User wants to create new content from scratch or based on instructions
@@ -274,7 +295,7 @@ const classifyTask = async (userPrompt: string, contextText?: string): Promise<T
 User prompt: "${userPrompt}"
 ${contextText ? `Context text: "${contextText}"` : ''}
 
-Respond with ONLY a JSON object in this exact format:
+Respond with ONLY a JSON object in this exact format (no markdown formatting, no code blocks):
 {
   "taskType": "rewrite|write|translate|summarize|unknown",
   "confidence": 0.95,
@@ -288,12 +309,33 @@ Respond with ONLY a JSON object in this exact format:
 
     const result = await session.prompt(classificationPrompt);
     session.destroy();
-    
+
     try {
-      const classification = JSON.parse(result.trim());
+      // Clean the result to remove markdown formatting and extract JSON
+      let cleanedResult = result.trim();
+      
+      // Remove markdown code blocks if present
+      if (cleanedResult.includes('```json')) {
+        cleanedResult = cleanedResult.replace(/```json\s*/, '').replace(/```\s*$/, '');
+      } else if (cleanedResult.includes('```')) {
+        cleanedResult = cleanedResult.replace(/```\s*/, '').replace(/```\s*$/, '');
+      }
+      
+      // Find JSON object boundaries
+      const jsonStart = cleanedResult.indexOf('{');
+      const jsonEnd = cleanedResult.lastIndexOf('}') + 1;
+      
+      if (jsonStart !== -1 && jsonEnd > jsonStart) {
+        cleanedResult = cleanedResult.substring(jsonStart, jsonEnd);
+      }
+      
+      console.log('Cleaned classification result:', cleanedResult);
+      
+      const classification = JSON.parse(cleanedResult);
       return classification as TaskClassification;
     } catch (parseError) {
       console.warn('Failed to parse classification result:', result);
+      console.warn('Parse error:', parseError);
       return {
         taskType: 'unknown',
         confidence: 0,
@@ -313,11 +355,11 @@ Respond with ONLY a JSON object in this exact format:
 // Rewriter API integration
 const createRewriter = async (options?: RewriterOptions): Promise<Rewriter> => {
   const availability = await Rewriter.availability();
-  
+
   if (availability === 'unavailable') {
     throw new Error('Rewriter API is not available');
   }
-  
+
   return await Rewriter.create({
     tone: options?.tone || 'as-is',
     format: options?.format || 'as-is',
@@ -335,14 +377,14 @@ const createRewriter = async (options?: RewriterOptions): Promise<Rewriter> => {
 // Writer API integration  
 const createWriter = async (options?: WriterOptions): Promise<Writer> => {
   const availability = await Writer.availability();
-  
+
   if (availability === 'unavailable') {
     throw new Error('Writer API is not available');
   }
-  
+
   return await Writer.create({
     tone: options?.tone || 'as-is',
-    format: options?.format || 'as-is', 
+    format: options?.format || 'as-is',
     length: options?.length || 'as-is',
     sharedContext: options?.sharedContext,
     signal: options?.signal,
@@ -360,29 +402,29 @@ const processTextIntelligently = async (userPrompt: string, contextText?: string
     // Step 1: Classify the task
     const classification = await classifyTask(userPrompt, contextText);
     console.log('Task classification:', classification);
-    
+
     // Step 2: Route to appropriate API based on classification
     switch (classification.taskType) {
       case 'rewrite':
         if (!contextText) {
           throw new Error('Rewrite task requires context text');
         }
-        
+
         const rewriter = await createRewriter({
           tone: classification.suggestedOptions?.tone as any,
           format: classification.suggestedOptions?.format as any,
           length: classification.suggestedOptions?.length as any,
           sharedContext: `User wants to rewrite this text: "${userPrompt}"`,
         });
-        
+
         const rewrittenText = await rewriter.rewrite(contextText, {
           context: userPrompt,
           tone: classification.suggestedOptions?.tone as any,
         });
-        
+
         rewriter.destroy();
         return rewrittenText;
-        
+
       case 'write':
         const writer = await createWriter({
           tone: classification.suggestedOptions?.tone as any,
@@ -390,29 +432,29 @@ const processTextIntelligently = async (userPrompt: string, contextText?: string
           length: classification.suggestedOptions?.length as any,
           sharedContext: contextText ? `Context: "${contextText}"` : undefined,
         });
-        
+
         const writtenText = await writer.write(userPrompt, {
           context: contextText,
           tone: classification.suggestedOptions?.tone as any,
         });
-        
+
         writer.destroy();
         return writtenText;
-        
+
       case 'translate':
         // Use existing translation logic
         if (!contextText) {
           throw new Error('Translation task requires context text');
         }
         return await processTextWithAI(userPrompt, contextText);
-        
+
       case 'summarize':
         // Use existing AI logic for summarization
         if (!contextText) {
           throw new Error('Summarization task requires context text');
         }
         return await processTextWithAI(`Summarize this text: ${userPrompt}`, contextText);
-        
+
       default:
         // Fallback to original AI processing
         console.log('Using fallback AI processing for unknown task type');
