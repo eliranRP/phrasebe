@@ -616,56 +616,6 @@ const isGmailPDFViewer = (): boolean => {
   return isGmailSite && hasPDFViewer;
 };
 
-// Create magic stick bubble for PDF translation
-const createPDFMagicStickBubble = (): void => {
-  // Remove existing bubble if it exists
-  const existingBubble = document.querySelector('.phrasebe-pdf-magic-stick');
-  if (existingBubble) {
-    existingBubble.remove();
-  }
-
-  // Create the magic stick bubble
-  const bubble = document.createElement('div');
-  bubble.className = 'phrasebe-pdf-magic-stick';
-  bubble.innerHTML = `
-    <div class="magic-stick-icon">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-        <!-- Pencil -->
-        <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="#8b5cf6"/>
-        <!-- Sparkles -->
-        <path d="M19 3l-1.5 1.5L16 3l1.5-1.5L19 3z" fill="#10b981"/>
-        <path d="M21 7l-1 1L19 7l1-1L21 7z" fill="#10b981"/>
-        <path d="M17 5l-0.5 0.5L16 5l0.5-0.5L17 5z" fill="#10b981"/>
-      </svg>
-    </div>
-  `;
-
-  // Position the bubble on the right side
-  bubble.style.position = 'fixed';
-  bubble.style.top = '20px';
-  bubble.style.right = '20px';
-  bubble.style.zIndex = '999999';
-  bubble.style.cursor = 'pointer';
-
-  // Add click event listener
-  bubble.addEventListener('click', async () => {
-    console.log('Magic stick clicked, extracting PDF content');
-    await extractAndTranslatePDFContent();
-  });
-
-  // Add to document
-  document.body.appendChild(bubble);
-  console.log('PDF magic stick bubble created');
-};
-
-// Remove PDF magic stick bubble
-const removePDFMagicStickBubble = (): void => {
-  const existingBubble = document.querySelector('.phrasebe-pdf-magic-stick');
-  if (existingBubble) {
-    existingBubble.remove();
-    console.log('PDF magic stick bubble removed');
-  }
-};
 
 // Extract PDF content and show translation
 // Check if PDF translation is allowed
@@ -685,50 +635,7 @@ const isPDFTranslationAllowed = async (): Promise<boolean> => {
   return true;
 };
 
-// Extract text from PDF text elements
-const extractTextFromElements = (pdfViewer: Element): string => {
-  const textElements = pdfViewer.querySelectorAll('.aLF-aPX-aPF-aPE-a1J-Ji');
-  if (textElements.length === 0) return '';
 
-  const textParts = Array.from(textElements)
-    .map(el => el.textContent?.trim())
-    .filter(text => text && text.length > 0);
-
-  return textParts.join(' ').trim();
-};
-
-// Extract text from PDF viewer
-const extractPDFText = (pdfViewer: Element): string => {
-  let pdfText = extractTextFromElements(pdfViewer);
-
-  if (!pdfText || pdfText.length === 0) {
-    pdfText = pdfViewer.textContent?.trim() || '';
-  }
-
-  return pdfText;
-};
-
-// Extract and translate PDF content
-const extractAndTranslatePDFContent = async (): Promise<void> => {
-  console.log('Extracting PDF content for translation');
-
-  if (!(await isPDFTranslationAllowed())) return;
-
-  const pdfViewer = document.querySelector('div.aLF-aPX[role="dialog"]');
-  if (!pdfViewer) {
-    console.log('PDF viewer not found');
-    return;
-  }
-
-  const pdfText = extractPDFText(pdfViewer);
-  console.log('Extracted PDF text:', pdfText);
-
-  if (pdfText && pdfText.length > 0) {
-    await showSuggestionBoxForPDF(pdfText);
-  } else {
-    console.log('No PDF text found to translate');
-  }
-};
 
 // Helper function to get position for suggestion box
 const getSuggestionBoxPosition = (): { x: number; y: number } => {
@@ -742,21 +649,11 @@ const getSuggestionBoxPosition = (): { x: number; y: number } => {
       y: window.innerHeight / 2
     };
   } else {
-    // For PDF, position near the magic stick button
-    const magicStick = document.querySelector('.phrasebe-pdf-magic-stick') as HTMLElement;
-    if (magicStick) {
-      const magicStickRect = magicStick.getBoundingClientRect();
-      return {
-        x: magicStickRect.left,
-        y: magicStickRect.bottom + 10 // 10px gap below the button
-      };
-    } else {
-      // Fallback to center of screen
-      return {
-        x: window.innerWidth / 2,
-        y: window.innerHeight / 2
-      };
-    }
+    // For other sites, center the box in the middle of the screen
+    return {
+      x: window.innerWidth / 2,
+      y: window.innerHeight / 2
+    };
   }
 };
 
@@ -766,6 +663,12 @@ const addDragFunctionality = (box: HTMLDivElement): void => {
   const header = box.querySelector('.suggestion-header') as HTMLElement;
 
   const startDrag = (e: MouseEvent): void => {
+    // Don't start drag if clicking on text-content area
+    const target = e.target as HTMLElement;
+    if (target.closest('.text-content')) {
+      return;
+    }
+
     isDragging = true;
     const rect = box.getBoundingClientRect();
     dragOffset.x = e.clientX - rect.left;
@@ -812,11 +715,24 @@ const addDragFunctionality = (box: HTMLDivElement): void => {
     dragHandle.addEventListener('mousedown', startDrag);
   }
   if (header) {
-    header.addEventListener('mousedown', startDrag);
+    header.addEventListener('mousedown', (e) => {
+      // Only start drag if not clicking on text-content or header-content
+      const target = e.target as HTMLElement;
+      if (target.closest('.text-content') || target.closest('.header-content')) {
+        return;
+      }
+      startDrag(e);
+    });
   }
 
   // Prevent mouseup events on the suggestion box from triggering text selection
   box.addEventListener('mouseup', (e) => {
+    // Don't prevent text selection in text-content areas
+    const target = e.target as HTMLElement;
+    if (target.closest('.text-content')) {
+      return;
+    }
+
     if (!isDragging) {
       e.stopPropagation();
     }
@@ -827,6 +743,9 @@ const addDragFunctionality = (box: HTMLDivElement): void => {
 const showSkeletonLoader = (box: HTMLDivElement, title: string = 'Translation (Detecting language...)'): void => {
   const headerContent = box.querySelector('.header-content') as HTMLElement;
   if (headerContent) {
+    // Add skeleton state class to maintain consistent sizing
+    headerContent.classList.add('skeleton-state');
+
     headerContent.innerHTML = `
       <div class="header-title">${title}</div>
       <div class="skeleton-loader">
@@ -862,7 +781,7 @@ const addSuggestionBoxEventListeners = (box: HTMLDivElement, selectedText: strin
           headerContent.innerHTML = `
             <div class="header-title">Original Text (${originalDetectedLanguage})</div>
             <div class="header-text" dir="${originalDirection}">
-              <div class="text-content">${selectedText}</div>
+              <div class="text-content" contenteditable="true">${selectedText}</div>
             </div>
           `;
         }
@@ -887,10 +806,13 @@ const addSuggestionBoxEventListeners = (box: HTMLDivElement, selectedText: strin
             formattedTranslation = formatTextForDisplay(translatedText);
           }
 
+          // Remove skeleton state class when translation is complete
+          headerContent.classList.remove('skeleton-state');
+
           headerContent.innerHTML = `
             <div class="header-title">Translation (${originalDetectedLanguage || 'English'} → ${languageName})</div>
             <div class="header-text ${isLongText ? 'long-text' : ''}" dir="${outputDirection}">
-              <div class="text-content">${formattedTranslation.replace(/\n/g, '<br>')}</div>
+              <div class="text-content" contenteditable="true">${formattedTranslation.replace(/\n/g, '<br>')}</div>
             </div>
           `;
         }
@@ -899,6 +821,9 @@ const addSuggestionBoxEventListeners = (box: HTMLDivElement, selectedText: strin
         // Show error message in the suggestion box
         const headerContent = box?.querySelector('.header-content') as HTMLElement;
         if (headerContent) {
+          // Remove skeleton state class when showing error
+          headerContent.classList.remove('skeleton-state');
+
           headerContent.innerHTML = `
             <div class="header-title">Translation Error</div>
             <div class="header-text">
@@ -936,6 +861,15 @@ const addSuggestionBoxEventListeners = (box: HTMLDivElement, selectedText: strin
     whatsappInput.addEventListener('input', () => {
       const hasText = whatsappInput.textContent && whatsappInput.textContent.trim().length > 0;
       whatsappSendBtn.style.display = hasText ? 'flex' : 'none';
+
+      // Restore placeholder when text is cleared
+      if (!hasText) {
+        whatsappInput.setAttribute('data-placeholder', 'Enter your own prompt');
+        // Clear any remaining HTML content to ensure :empty works
+        whatsappInput.innerHTML = '';
+      } else {
+        whatsappInput.removeAttribute('data-placeholder');
+      }
     });
 
     whatsappInput.addEventListener('keydown', (e) => {
@@ -964,12 +898,14 @@ const addSuggestionBoxEventListeners = (box: HTMLDivElement, selectedText: strin
           headerContent.innerHTML = `
             <div class="header-title">AI Response</div>
             <div class="header-text" dir="${responseDirection}">
-              <div class="text-content">${response}</div>
+              <div class="text-content" contenteditable="true">${response}</div>
             </div>
           `;
         }
 
         whatsappInput.textContent = '';
+        whatsappInput.innerHTML = '';
+        whatsappInput.setAttribute('data-placeholder', 'Enter your own prompt');
         whatsappSendBtn.style.display = 'none';
 
       } catch (error) {
@@ -1099,10 +1035,13 @@ const autoTranslate = async (selectedText: string): Promise<void> => {
             formattedTranslation = formatTextForDisplay(translatedText);
           }
 
+          // Remove skeleton state class when translation is complete
+          headerContent.classList.remove('skeleton-state');
+
           headerContent.innerHTML = `
           <div class="header-title">Translation (${sourceLanguageName} → ${targetLanguageName})</div>
           <div class="header-text ${isLongText ? 'long-text' : ''}" dir="${outputDirection}">
-            <div class="text-content">${formattedTranslation.replace(/\n/g, '<br>')}</div>
+            <div class="text-content" contenteditable="true">${formattedTranslation.replace(/\n/g, '<br>')}</div>
           </div>
         `;
         }
@@ -1149,9 +1088,10 @@ const autoTranslate = async (selectedText: string): Promise<void> => {
   }
 };
 
-// Show suggestion box for PDF content (reuses existing functions)
-const showSuggestionBoxForPDF = async (selectedText: string): Promise<void> => {
-  console.log('showSuggestionBoxForPDF called with text:', selectedText);
+
+// Show suggestion box for PDF copy (immediate, no delay)
+const showSuggestionBoxForPDFCopy = async (selectedText: string): Promise<void> => {
+  console.log('showSuggestionBoxForPDFCopy called with text:', selectedText);
 
   // Remove existing suggestion box
   if (suggestionBox) {
@@ -1171,7 +1111,7 @@ const showSuggestionBoxForPDF = async (selectedText: string): Promise<void> => {
   // Add all event listeners
   addSuggestionBoxEventListeners(suggestionBox, selectedText);
 
-  // Start auto-translation
+  // Start auto-translation immediately (no delay)
   autoTranslate(selectedText);
 };
 
@@ -1198,45 +1138,14 @@ const sendPromptToAI = async (prompt: string, context: string): Promise<string> 
   }
 };
 
-// Check if PDF viewer is closed
-const isPDFViewerClosed = (element: Element): boolean => {
-  return element.classList &&
-    element.classList.contains('aLF-aPX') &&
-    element.getAttribute('role') === 'dialog';
-};
 
-// Handle PDF viewer closure detection
-const handlePDFViewerClosure = (node: Node): void => {
-  if (node.nodeType !== Node.ELEMENT_NODE) return;
-
-  const element = node as Element;
-  if (isPDFViewerClosed(element)) {
-    console.log('PDF viewer closed, removing magic stick bubble');
-    removePDFMagicStickBubble();
-  }
-};
-
-// Create observer for PDF viewer closure
-const createPDFClosureObserver = (): MutationObserver => {
-  return new MutationObserver((mutations) => {
-    mutations.forEach((mutation) => {
-      mutation.removedNodes.forEach((node) => {
-        handlePDFViewerClosure(node);
-      });
-    });
-  });
-};
-
-// Add PDF magic stick bubble when PDF viewer opens
+// Add PDF copy listeners when PDF viewer opens
 const addPDFViewerListeners = (): void => {
   const pdfViewer = document.querySelector('div.aLF-aPX[role="dialog"]');
   if (!pdfViewer) return;
 
-  console.log('PDF viewer detected, creating magic stick bubble');
-  createPDFMagicStickBubble();
-
-  const observer = createPDFClosureObserver();
-  observer.observe(document.body, { childList: true, subtree: true });
+  console.log('PDF viewer detected, adding copy listeners');
+  addPDFCopyListeners();
 };
 
 // Gmail compose contenteditable detection - focus-based
@@ -1534,9 +1443,11 @@ const formatTextWithPromptAPI = async (text: string, targetLanguage: string = 'e
     const prompt = `Please format the following text for better readability with proper line breaks and structure. 
 
 Requirements:
-- Add line breaks where appropriate for better readability
+- Add single line breaks where appropriate for better readability
 - Preserve numbered lists and bullet points
 - Keep the original structure and formatting
+- Do NOT add extra spacing or multiple line breaks
+- Use only single line breaks (\\n) between sections
 - Make the text more readable and well-organized
 - Return only the formatted plain text, no HTML tags, no explanations
 
@@ -1549,9 +1460,13 @@ ${text}`;
     });
     const response = await model.prompt(prompt);
 
-    // Strip any HTML tags that might be returned
+    // Strip any HTML tags that might be returned and normalize spacing
     const cleanText = (response || text).replace(/<[^>]*>/g, '');
-    return cleanText;
+
+    // Normalize multiple line breaks to single line breaks
+    const normalizedText = cleanText.replace(/\n\s*\n/g, '\n').trim();
+
+    return normalizedText;
   } catch (error) {
     console.warn('Failed to format text with Prompt API, using fallback:', error);
     return formatTextForDisplay(text);
@@ -1560,8 +1475,11 @@ ${text}`;
 
 // Simple fallback formatting (only used when AI formatting fails)
 const formatTextForDisplay = (text: string): string => {
-  // Simple line break preservation - return plain text
-  return text.replace(/\n/g, '\n');
+  // Normalize spacing and line breaks
+  return text
+    .replace(/\n\s*\n/g, '\n')  // Replace multiple line breaks with single line break
+    .replace(/\s+/g, ' ')       // Replace multiple spaces with single space
+    .trim();                    // Remove leading/trailing whitespace
 };
 
 const createSuggestionBox = async (selectedText: string, position: { x: number; y: number }): Promise<HTMLDivElement> => {
@@ -1826,13 +1744,13 @@ const handlePDFViewerDetection = (node: Node): void => {
   const element = node as Element;
 
   if (isPDFViewerDialog(element)) {
-    console.log('PDF viewer opened dynamically, adding magic stick bubble');
+    console.log('PDF viewer opened dynamically, adding copy listeners');
     addPDFViewerListeners();
     return;
   }
 
   if (containsPDFViewer(element)) {
-    console.log('Nested PDF viewer detected, adding magic stick bubble');
+    console.log('Nested PDF viewer detected, adding copy listeners');
     addPDFViewerListeners();
   }
 };
@@ -1846,6 +1764,40 @@ const createPDFViewerObserver = (): MutationObserver => {
       });
     });
   });
+};
+
+// Handle copy event in PDF viewer
+const handlePDFCopyEvent = async (event: Event): Promise<void> => {
+  const clipboardEvent = event as ClipboardEvent;
+
+  // Check if we're in a PDF viewer
+  const pdfViewer = document.querySelector('div.aLF-aPX[role="dialog"]');
+  if (!pdfViewer) return;
+
+  // Get copied text from clipboard
+  const copiedText = clipboardEvent.clipboardData?.getData('text/plain')?.trim();
+  if (!copiedText || copiedText.length === 0) return;
+
+  console.log('PDF copy detected:', copiedText);
+
+  // Check if translation is allowed
+  if (!(await isPDFTranslationAllowed())) return;
+
+  // Show translation box with copied text (immediate, no delay)
+  await showSuggestionBoxForPDFCopy(copiedText);
+};
+
+// Add copy event listeners to PDF viewer
+const addPDFCopyListeners = (): void => {
+  const pdfViewer = document.querySelector('div.aLF-aPX[role="dialog"]');
+  if (!pdfViewer) return;
+
+  // Remove existing listeners to avoid duplicates
+  pdfViewer.removeEventListener('copy', handlePDFCopyEvent as EventListener);
+
+  // Add copy event listener
+  pdfViewer.addEventListener('copy', handlePDFCopyEvent as EventListener);
+  console.log('PDF copy listeners added');
 };
 
 // Start monitoring for PDF viewers opening dynamically
@@ -1878,7 +1830,7 @@ const initializeExtension = async (): Promise<void> => {
 
   // Special handling for Gmail PDF viewer
   if (isGmailPDFViewer()) {
-    console.log('Gmail PDF viewer detected at startup, adding specific event listeners');
+    console.log('Gmail PDF viewer detected at startup, adding copy event listeners');
     addPDFViewerListeners();
   } else {
     console.log('No Gmail PDF viewer detected at startup');
