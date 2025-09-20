@@ -111,9 +111,9 @@ declare global {
   }
 
   interface WriterOptions {
-    tone?: 'more-formal' | 'as-is' | 'more-casual';
-    format?: 'as-is' | 'markdown' | 'plain-text';
-    length?: 'shorter' | 'as-is' | 'longer';
+    tone?: 'formal' | 'neutral' | 'casual';
+    format?: 'markdown' | 'plain-text';
+    length?: 'short' | 'medium' | 'long';
     sharedContext?: string;
     signal?: AbortSignal;
     monitor?: (m: WriterMonitor) => void;
@@ -121,7 +121,7 @@ declare global {
 
   interface WriterContext {
     context?: string;
-    tone?: 'more-formal' | 'as-is' | 'more-casual';
+    tone?: 'formal' | 'neutral' | 'casual';
     signal?: AbortSignal;
   }
 

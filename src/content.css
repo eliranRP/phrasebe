@@ -361,8 +361,9 @@
 
 .phrasebe-suggestion-box {
   /* Layout */
-  position: absolute;
-  z-index: 10000;
+  position: fixed !important;
+  z-index: 2147483647 !important;
+  /* Maximum z-index value */
   display: flex;
   flex-direction: column;
 

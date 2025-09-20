@@ -270,7 +270,7 @@ const createClassificationSession = async (): Promise<LanguageModelSession> => {
   return await LanguageModel.create({
     initialPrompts: [{
       role: "system",
-      content: "You are a task classification assistant. Analyze user requests and classify them into specific task types. Always respond with valid JSON format only."
+      content: "You are an intelligent task classifier that analyzes user requests and context to determine the most appropriate AI task. You excel at understanding user intent, considering context, and choosing the right approach (rewrite, write, translate, summarize). Focus on what the user actually wants to achieve rather than rigid keyword matching. Always respond with valid JSON format only."
     }],
     outputLanguage: "en", // Specify English as output language
     monitor(m: LanguageModelMonitor) {
@@ -285,32 +285,70 @@ const classifyTask = async (userPrompt: string, contextText?: string): Promise<T
   try {
     const session = await createClassificationSession();
 
-    const classificationPrompt = `Analyze this user request and classify it into one of these task types:
-- "rewrite": User wants to improve, rephrase, or restructure existing text
-- "write": User wants to create new content from scratch or based on instructions
-- "translate": User wants to translate text to another language
-- "summarize": User wants to condense or summarize text
-- "unknown": Request doesn't fit any category
+    const classificationPrompt = `You are an intelligent task classifier. Analyze the user's request and the context to determine the most appropriate task type.
+
+TASK TYPE DEFINITIONS:
+- "rewrite": Modify, improve, rephrase, or restructure the EXISTING selected text while keeping the same core content
+- "write": Create NEW content, responses, answers, or original text based on instructions or context
+- "translate": Convert text from one language to another
+- "summarize": Condense, extract key points, or create a shorter version of the text
+- "unknown": Request doesn't clearly fit any category
+
+CRITICAL DISTINCTION:
+- If user wants to MODIFY the selected text → "rewrite"
+- If user wants to CREATE a response TO the selected text → "write"
+
+ANALYSIS APPROACH:
+1. Read the user prompt carefully
+2. Consider the context text (the selected text)
+3. Determine: Does user want to modify the selected text OR create a response to it?
+4. Choose the task that best matches their goal
+
+EXAMPLES OF CORRECT CLASSIFICATION:
+- "make this more professional" → rewrite (modifying the selected text)
+- "rephrase this to be clearer" → rewrite (restructuring the selected text)
+- "answer this message" → write (creating a response TO the selected text)
+- "write a reply to this" → write (creating new content in response to selected text)
+- "respond to this email" → write (creating a response TO the selected text)
+- "what should I say to this?" → write (creating a suggested response)
+- "how do I reply to this?" → write (creating a suggested response)
+- "translate this to Hebrew" → translate
+- "summarize this text" → summarize
 
 User prompt: "${userPrompt}"
-${contextText ? `Context text: "${contextText}"` : ''}
+${contextText ? `Context text (selected text): "${contextText}"` : ''}
+
+KEY ANALYSIS QUESTIONS:
+1. Is the user asking to modify the selected text itself?
+2. Is the user asking to create a response/reply/answer to the selected text?
+3. What would be the most helpful outcome for the user?
+
+CONFIDENCE GUIDELINES:
+- Only use high confidence (0.95+) when the task type is clearly obvious
+- If there's any ambiguity between rewrite/translate/write, use lower confidence
+- Consider edge cases like "make this better" (could be rewrite or write)
+- When uncertain, it's better to use lower confidence and let the system fall back to Prompt API
 
 Respond with ONLY a JSON object in this exact format (no markdown formatting, no code blocks):
 {
-  "taskType": "rewrite",
-  "confidence": 0.95,
-  "reasoning": "Brief explanation of why this classification",
+  "taskType": "write",
+  "confidence": 0.98,
+  "reasoning": "Detailed explanation focusing on whether user wants to modify selected text or create response to it",
   "suggestedOptions": {
-    "tone": "as-is",
-    "format": "as-is", 
-    "length": "as-is"
+    "tone": "casual",
+    "format": "plain-text", 
+    "length": "short"
   }
 }
 
 IMPORTANT: For suggestedOptions, select ONLY ONE value from these options:
-- tone: "more-formal", "as-is", or "more-casual"
-- format: "as-is", "markdown", or "plain-text"
-- length: "shorter", "as-is", or "longer"`;
+- tone: "formal", "neutral", or "casual" (for Writer API) / "more-formal", "as-is", or "more-casual" (for Rewriter API)
+- format: "markdown" or "plain-text" (for Writer API) / "as-is", "markdown", or "plain-text" (for Rewriter API)
+- length: "short", "medium", or "long" (for Writer API) / "shorter", "as-is", or "longer" (for Rewriter API)
+
+PREFERENCES: Unless user specifies otherwise, prefer:
+- Writer API: "casual" tone, "plain-text" format, "short" length
+- Rewriter API: "as-is" tone, "as-is" format, "as-is" length`;
 
     const result = await session.prompt(classificationPrompt);
     session.destroy();
@@ -360,15 +398,15 @@ IMPORTANT: For suggestedOptions, select ONLY ONE value from these options:
 // Rewriter API integration
 const createRewriter = async (options?: RewriterOptions): Promise<Rewriter> => {
   const availability = await Rewriter.availability();
-  
+
   if (availability === 'unavailable') {
     throw new Error('Rewriter API is not available');
   }
-  
+
   if (availability === 'downloadable') {
     throw new Error('Rewriter model needs to be downloaded with user gesture. Please try again after the model is downloaded.');
   }
-  
+
   return await Rewriter.create({
     tone: options?.tone || 'as-is',
     format: options?.format || 'as-is',
@@ -386,19 +424,19 @@ const createRewriter = async (options?: RewriterOptions): Promise<Rewriter> => {
 // Writer API integration  
 const createWriter = async (options?: WriterOptions): Promise<Writer> => {
   const availability = await Writer.availability();
-  
+
   if (availability === 'unavailable') {
     throw new Error('Writer API is not available');
   }
-  
+
   if (availability === 'downloadable') {
     throw new Error('Writer model needs to be downloaded with user gesture. Please try again after the model is downloaded.');
   }
-  
+
   return await Writer.create({
-    tone: options?.tone || 'as-is',
-    format: options?.format || 'as-is', 
-    length: options?.length || 'as-is',
+    tone: options?.tone || 'casual', // Prefer friendly tone
+    format: options?.format || 'plain-text', // Prefer plain-text
+    length: options?.length || 'short', // Prefer short answers
     sharedContext: options?.sharedContext,
     signal: options?.signal,
     monitor(m) {
@@ -424,7 +462,7 @@ const triggerModelDownloads = async (): Promise<void> => {
         },
       });
     }
-    
+
     // Check Writer availability
     const writerAvailability = await Writer.availability();
     if (writerAvailability === 'downloadable') {
@@ -443,16 +481,30 @@ const triggerModelDownloads = async (): Promise<void> => {
 };
 
 // Validate and sanitize classification options
-const validateClassificationOptions = (options: any) => {
-  const validTones = ['more-formal', 'as-is', 'more-casual'];
-  const validFormats = ['as-is', 'markdown', 'plain-text'];
-  const validLengths = ['shorter', 'as-is', 'longer'];
+const validateClassificationOptions = (options: any, taskType: string) => {
+  if (taskType === 'write') {
+    // Writer API values according to documentation
+    const validWriterTones = ['formal', 'neutral', 'casual'];
+    const validWriterFormats = ['markdown', 'plain-text'];
+    const validWriterLengths = ['short', 'medium', 'long'];
 
-  return {
-    tone: validTones.includes(options?.tone) ? options.tone : 'as-is',
-    format: validFormats.includes(options?.format) ? options.format : 'as-is',
-    length: validLengths.includes(options?.length) ? options.length : 'as-is'
-  };
+    return {
+      tone: validWriterTones.includes(options?.tone) ? options.tone : 'casual', // Prefer friendly tone
+      format: validWriterFormats.includes(options?.format) ? options.format : 'plain-text', // Prefer plain-text
+      length: validWriterLengths.includes(options?.length) ? options.length : 'short' // Prefer short answers
+    };
+  } else {
+    // Rewriter API values (keeping existing logic)
+    const validRewriterTones = ['more-formal', 'as-is', 'more-casual'];
+    const validRewriterFormats = ['as-is', 'markdown', 'plain-text'];
+    const validRewriterLengths = ['shorter', 'as-is', 'longer'];
+
+    return {
+      tone: validRewriterTones.includes(options?.tone) ? options.tone : 'as-is',
+      format: validRewriterFormats.includes(options?.format) ? options.format : 'as-is',
+      length: validRewriterLengths.includes(options?.length) ? options.length : 'as-is'
+    };
+  }
 };
 
 // Intelligent text processing with API routing
@@ -462,25 +514,31 @@ const processTextIntelligently = async (userPrompt: string, contextText?: string
     const classification = await classifyTask(userPrompt, contextText);
     console.log('Task classification:', classification);
 
-    // Step 2: Route to appropriate API based on classification
+    // Step 2: Check confidence threshold - fall back to Prompt API if below 95%
+    if (classification.confidence < 0.95) {
+      console.log(`Classification confidence (${classification.confidence}) below 95% threshold, falling back to Prompt API`);
+      return await processTextWithAI(userPrompt, contextText);
+    }
+
+    // Step 3: Route to appropriate API based on classification
     switch (classification.taskType) {
       case 'rewrite':
         if (!contextText) {
           throw new Error('Rewrite task requires context text');
         }
 
-        const validatedOptions = validateClassificationOptions(classification.suggestedOptions);
+        const validatedOptions = validateClassificationOptions(classification.suggestedOptions, 'rewrite');
         console.log('Validated rewrite options:', validatedOptions);
 
         const rewriter = await createRewriter({
           tone: validatedOptions.tone as any,
           format: validatedOptions.format as any,
           length: validatedOptions.length as any,
-          sharedContext: `User wants to rewrite this text: "${userPrompt}"`,
+          sharedContext: `User wants to rewrite this text: "${contextText}". Instructions: "${userPrompt}"`,
         });
 
         const rewrittenText = await rewriter.rewrite(contextText, {
-          context: userPrompt,
+          context: `Original text: "${contextText}". User instruction: "${userPrompt}"`,
           tone: validatedOptions.tone as any,
         });
 
@@ -488,18 +546,23 @@ const processTextIntelligently = async (userPrompt: string, contextText?: string
         return rewrittenText;
 
       case 'write':
-        const validatedWriteOptions = validateClassificationOptions(classification.suggestedOptions);
+        const validatedWriteOptions = validateClassificationOptions(classification.suggestedOptions, 'write');
         console.log('Validated write options:', validatedWriteOptions);
+
+        // Create a proper prompt for response generation
+        const responsePrompt = contextText
+          ? `Write a response to this message: "${contextText}". ${userPrompt}`
+          : userPrompt;
 
         const writer = await createWriter({
           tone: validatedWriteOptions.tone as any,
           format: validatedWriteOptions.format as any,
           length: validatedWriteOptions.length as any,
-          sharedContext: contextText ? `Context: "${contextText}"` : undefined,
+          sharedContext: contextText ? `You are writing a response to this message: "${contextText}". User instruction: "${userPrompt}"` : undefined,
         });
 
-        const writtenText = await writer.write(userPrompt, {
-          context: contextText,
+        const writtenText = await writer.write(responsePrompt, {
+          context: contextText ? `Original message: "${contextText}". User wants: "${userPrompt}"` : undefined,
           tone: validatedWriteOptions.tone as any,
         });
 
@@ -507,18 +570,18 @@ const processTextIntelligently = async (userPrompt: string, contextText?: string
         return writtenText;
 
       case 'translate':
-        // Use existing translation logic
+        // Use existing translation logic with enhanced context
         if (!contextText) {
           throw new Error('Translation task requires context text');
         }
-        return await processTextWithAI(userPrompt, contextText);
+        return await processTextWithAI(`Translate this text: "${contextText}". ${userPrompt}`, contextText);
 
       case 'summarize':
-        // Use existing AI logic for summarization
+        // Use existing AI logic for summarization with enhanced context
         if (!contextText) {
           throw new Error('Summarization task requires context text');
         }
-        return await processTextWithAI(`Summarize this text: ${userPrompt}`, contextText);
+        return await processTextWithAI(`Summarize this text: "${contextText}". ${userPrompt}`, contextText);
 
       default:
         // Fallback to original AI processing
@@ -872,13 +935,15 @@ const createSuggestionBox = async (selectedText: string, position: { x: number; 
   // Check if we're on WhatsApp Web for centered positioning
   const isWhatsAppWeb = window.location.hostname.includes('web.whatsapp.com');
 
+  // Always use fixed positioning with maximum z-index for consistent behavior
+  box.style.position = 'fixed';
+  box.style.zIndex = '2147483647'; // Maximum z-index value
+
   if (isWhatsAppWeb) {
     // For WhatsApp Web, center the box in the middle of the screen
-    box.style.position = 'fixed';
     box.style.left = '50%';
     box.style.top = '50%';
     box.style.transform = 'translate(-50%, -50%)';
-    box.style.zIndex = '10000';
   } else {
     // For other sites, use the original positioning logic
     const boxWidth = 350; // Approximate width of the box
@@ -892,10 +957,8 @@ const createSuggestionBox = async (selectedText: string, position: { x: number; 
       leftPosition = Math.max(10, position.x - boxWidth - 20);
     }
 
-    box.style.position = 'fixed';
     box.style.left = leftPosition + 'px';
     box.style.top = position.y + 'px';
-    box.style.zIndex = '10000';
   }
 
   return box;
@@ -1250,7 +1313,7 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
             <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/>
           </svg>
         `;
-        copyBtn.style.background = '#10b981';
+        copyBtn.style.background = '#9B7EDE';
 
         // Restore after 2 seconds
         setTimeout(() => {
@@ -1277,7 +1340,7 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
             <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/>
           </svg>
         `;
-        copyBtn.style.background = '#10b981';
+        copyBtn.style.background = '#9B7EDE';
 
         setTimeout(() => {
           copyBtn.innerHTML = originalContent;
@@ -1311,7 +1374,7 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
             <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/>
           </svg>
         `;
-        disableSiteBtn.style.background = '#10b981';
+        disableSiteBtn.style.background = '#9B7EDE';
         disableSiteBtn.title = 'Translation disabled on this site';
 
         // Hide the suggestion box
@@ -1368,8 +1431,6 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
 
       // Set text direction
       whatsappInput.setAttribute('dir', isRTL ? 'rtl' : 'ltr');
-
-      console.log('Text direction detected:', isRTL ? 'RTL' : 'LTR', 'for text:', trimmedText.substring(0, 20) + '...');
     };
 
     // Show/hide send button based on input content
@@ -1771,9 +1832,9 @@ const initializeExtension = async (): Promise<void> => {
 
       const composeDiv = getGmailComposeDiv();
       if (composeDiv) {
-        // Show loading state with green border
-        bubble.style.border = '2px solid #10b981';
-        bubble.style.boxShadow = '0 0 10px rgba(16, 185, 129, 0.5)';
+        // Show loading state with purple border
+        bubble.style.border = '2px solid #9B7EDE';
+        bubble.style.boxShadow = '0 0 10px rgba(155, 126, 222, 0.5)';
 
         try {
           await replaceGmailText(composeDiv);
