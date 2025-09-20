@@ -297,15 +297,20 @@ ${contextText ? `Context text: "${contextText}"` : ''}
 
 Respond with ONLY a JSON object in this exact format (no markdown formatting, no code blocks):
 {
-  "taskType": "rewrite|write|translate|summarize|unknown",
+  "taskType": "rewrite",
   "confidence": 0.95,
   "reasoning": "Brief explanation of why this classification",
   "suggestedOptions": {
-    "tone": "more-formal|as-is|more-casual",
-    "format": "as-is|markdown|plain-text", 
-    "length": "shorter|as-is|longer"
+    "tone": "as-is",
+    "format": "as-is", 
+    "length": "as-is"
   }
-}`;
+}
+
+IMPORTANT: For suggestedOptions, select ONLY ONE value from these options:
+- tone: "more-formal", "as-is", or "more-casual"
+- format: "as-is", "markdown", or "plain-text"
+- length: "shorter", "as-is", or "longer"`;
 
     const result = await session.prompt(classificationPrompt);
     session.destroy();
@@ -313,24 +318,24 @@ Respond with ONLY a JSON object in this exact format (no markdown formatting, no
     try {
       // Clean the result to remove markdown formatting and extract JSON
       let cleanedResult = result.trim();
-      
+
       // Remove markdown code blocks if present
       if (cleanedResult.includes('```json')) {
         cleanedResult = cleanedResult.replace(/```json\s*/, '').replace(/```\s*$/, '');
       } else if (cleanedResult.includes('```')) {
         cleanedResult = cleanedResult.replace(/```\s*/, '').replace(/```\s*$/, '');
       }
-      
+
       // Find JSON object boundaries
       const jsonStart = cleanedResult.indexOf('{');
       const jsonEnd = cleanedResult.lastIndexOf('}') + 1;
-      
+
       if (jsonStart !== -1 && jsonEnd > jsonStart) {
         cleanedResult = cleanedResult.substring(jsonStart, jsonEnd);
       }
-      
+
       console.log('Cleaned classification result:', cleanedResult);
-      
+
       const classification = JSON.parse(cleanedResult);
       return classification as TaskClassification;
     } catch (parseError) {
@@ -396,6 +401,19 @@ const createWriter = async (options?: WriterOptions): Promise<Writer> => {
   });
 };
 
+// Validate and sanitize classification options
+const validateClassificationOptions = (options: any) => {
+  const validTones = ['more-formal', 'as-is', 'more-casual'];
+  const validFormats = ['as-is', 'markdown', 'plain-text'];
+  const validLengths = ['shorter', 'as-is', 'longer'];
+  
+  return {
+    tone: validTones.includes(options?.tone) ? options.tone : 'as-is',
+    format: validFormats.includes(options?.format) ? options.format : 'as-is',
+    length: validLengths.includes(options?.length) ? options.length : 'as-is'
+  };
+};
+
 // Intelligent text processing with API routing
 const processTextIntelligently = async (userPrompt: string, contextText?: string): Promise<string> => {
   try {
@@ -409,33 +427,39 @@ const processTextIntelligently = async (userPrompt: string, contextText?: string
         if (!contextText) {
           throw new Error('Rewrite task requires context text');
         }
-
+        
+        const validatedOptions = validateClassificationOptions(classification.suggestedOptions);
+        console.log('Validated rewrite options:', validatedOptions);
+        
         const rewriter = await createRewriter({
-          tone: classification.suggestedOptions?.tone as any,
-          format: classification.suggestedOptions?.format as any,
-          length: classification.suggestedOptions?.length as any,
+          tone: validatedOptions.tone as any,
+          format: validatedOptions.format as any,
+          length: validatedOptions.length as any,
           sharedContext: `User wants to rewrite this text: "${userPrompt}"`,
         });
-
+        
         const rewrittenText = await rewriter.rewrite(contextText, {
           context: userPrompt,
-          tone: classification.suggestedOptions?.tone as any,
+          tone: validatedOptions.tone as any,
         });
 
         rewriter.destroy();
         return rewrittenText;
 
       case 'write':
+        const validatedWriteOptions = validateClassificationOptions(classification.suggestedOptions);
+        console.log('Validated write options:', validatedWriteOptions);
+        
         const writer = await createWriter({
-          tone: classification.suggestedOptions?.tone as any,
-          format: classification.suggestedOptions?.format as any,
-          length: classification.suggestedOptions?.length as any,
+          tone: validatedWriteOptions.tone as any,
+          format: validatedWriteOptions.format as any,
+          length: validatedWriteOptions.length as any,
           sharedContext: contextText ? `Context: "${contextText}"` : undefined,
         });
-
+        
         const writtenText = await writer.write(userPrompt, {
           context: contextText,
-          tone: classification.suggestedOptions?.tone as any,
+          tone: validatedWriteOptions.tone as any,
         });
 
         writer.destroy();
