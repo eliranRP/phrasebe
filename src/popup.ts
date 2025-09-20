@@ -4,6 +4,7 @@
 const STORAGE_KEYS = {
   BUBBLE_ENABLED: 'phrasebe_bubble_enabled',
   TRANSLATION_ENABLED: 'phrasebe_translation_enabled',
+  COPY_TRIGGER_ENABLED: 'phrasebe_copy_trigger_enabled',
   SOURCE_LANGUAGE: 'phrasebe_source_language',
   TARGET_LANGUAGE: 'phrasebe_target_language',
 } as const;
@@ -82,6 +83,7 @@ const loadSettings = async (): Promise<void> => {
     const result = await chrome.storage.sync.get([
       STORAGE_KEYS.BUBBLE_ENABLED,
       STORAGE_KEYS.TRANSLATION_ENABLED,
+      STORAGE_KEYS.COPY_TRIGGER_ENABLED,
       STORAGE_KEYS.SOURCE_LANGUAGE,
       STORAGE_KEYS.TARGET_LANGUAGE,
     ]);
@@ -96,6 +98,12 @@ const loadSettings = async (): Promise<void> => {
     const translationToggle = document.getElementById('translationToggle') as HTMLInputElement;
     if (translationToggle) {
       translationToggle.checked = result[STORAGE_KEYS.TRANSLATION_ENABLED] !== false; // Default to true
+    }
+
+    // Set copy trigger toggle
+    const copyTriggerToggle = document.getElementById('copyTriggerToggle') as HTMLInputElement;
+    if (copyTriggerToggle) {
+      copyTriggerToggle.checked = result[STORAGE_KEYS.COPY_TRIGGER_ENABLED] !== false; // Default to true
     }
 
     // Set source language
@@ -140,6 +148,15 @@ const setupEventListeners = (): void => {
     translationToggle.addEventListener('change', (event) => {
       const target = event.target as HTMLInputElement;
       saveSettings(STORAGE_KEYS.TRANSLATION_ENABLED, target.checked);
+    });
+  }
+
+  // Copy trigger toggle
+  const copyTriggerToggle = document.getElementById('copyTriggerToggle') as HTMLInputElement;
+  if (copyTriggerToggle) {
+    copyTriggerToggle.addEventListener('change', (event) => {
+      const target = event.target as HTMLInputElement;
+      saveSettings(STORAGE_KEYS.COPY_TRIGGER_ENABLED, target.checked);
     });
   }
 

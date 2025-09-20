@@ -17,3 +17,19 @@ chrome.runtime.onStartup.addListener(() => {
 chrome.runtime.onInstalled.addListener(() => {
   console.log('PhraseBE extension installed');
 });
+
+// Handle keyboard shortcuts
+chrome.commands.onCommand.addListener((command) => {
+  console.log('Command received:', command);
+
+  if (command === 'open-translate-box') {
+    // Send message to active tab to trigger translation
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0]?.id) {
+        chrome.tabs.sendMessage(tabs[0].id, {
+          action: 'trigger-translation'
+        });
+      }
+    });
+  }
+});

@@ -23,14 +23,62 @@ const isTranslationEnabled = async (): Promise<boolean> => {
   }
 };
 
+// Blacklist storage key
+const BLACKLIST_STORAGE_KEY = 'phrasebe_site_blacklist' as const;
+
+// Type for blacklist operations
+type BlacklistOperation = {
+  success: boolean;
+  message: string;
+};
+
+// Get current domain
+const getCurrentDomain = (): string => {
+  return window.location.hostname;
+};
+
+// Get blacklisted sites from storage
+const getBlacklistedSites = async (): Promise<string[]> => {
+  try {
+    const result = await chrome.storage.sync.get([BLACKLIST_STORAGE_KEY]);
+    return result[BLACKLIST_STORAGE_KEY] || [];
+  } catch (error) {
+    console.error('Failed to get blacklisted sites:', error);
+    return [];
+  }
+};
+
+// Add site to blacklist
+const addSiteToBlacklist = async (domain: string): Promise<BlacklistOperation> => {
+  try {
+    const blacklist = await getBlacklistedSites();
+
+    if (blacklist.includes(domain)) {
+      const message = `Site ${domain} is already blacklisted`;
+      console.log(message);
+      return { success: false, message };
+    }
+
+    blacklist.push(domain);
+    await chrome.storage.sync.set({ [BLACKLIST_STORAGE_KEY]: blacklist });
+    const message = `Site ${domain} added to blacklist successfully`;
+    console.log(message);
+    return { success: true, message };
+  } catch (error) {
+    const message = `Failed to add site ${domain} to blacklist: ${error}`;
+    console.error(message);
+    return { success: false, message };
+  }
+};
+
 // Check if current site is blacklisted
 const isSiteBlacklisted = async (): Promise<boolean> => {
   try {
-    const result = await chrome.storage.sync.get(['phrasebe_site_blacklist']);
-    const blacklist = result['phrasebe_site_blacklist'] || [];
-    const currentDomain = window.location.hostname;
+    const blacklist = await getBlacklistedSites();
+    const currentDomain = getCurrentDomain();
     return blacklist.includes(currentDomain);
   } catch (error) {
+    console.error('Failed to check if site is blacklisted:', error);
     return false; // Default to not blacklisted if error
   }
 };
@@ -848,11 +896,12 @@ const addSuggestionBoxEventListeners = (box: HTMLDivElement, selectedText: strin
   // Disable site button handler
   if (disableSiteBtn) {
     disableSiteBtn.addEventListener('click', async () => {
-      const currentDomain = window.location.hostname;
-      const blacklistedSites = await getBlacklistedSites();
-      blacklistedSites.push(currentDomain);
-      await chrome.storage.sync.set({ blacklistedSites });
-      hideSuggestionBox();
+      const currentDomain = getCurrentDomain();
+      const result = await addSiteToBlacklist(currentDomain);
+
+      if (result.success) {
+        hideSuggestionBox();
+      }
     });
   }
 
@@ -1115,11 +1164,6 @@ const showSuggestionBoxForPDFCopy = async (selectedText: string): Promise<void> 
   autoTranslate(selectedText);
 };
 
-// Helper function to get blacklisted sites
-const getBlacklistedSites = async (): Promise<string[]> => {
-  const result = await chrome.storage.sync.get(['blacklistedSites']);
-  return result.blacklistedSites || [];
-};
 
 // Helper function to send prompt to AI
 const sendPromptToAI = async (prompt: string, context: string): Promise<string> => {
@@ -1768,11 +1812,36 @@ const createPDFViewerObserver = (): MutationObserver => {
 
 // Handle copy event in PDF viewer
 const handlePDFCopyEvent = async (event: Event): Promise<void> => {
+  console.log('Copy event triggered in PDF viewer');
   const clipboardEvent = event as ClipboardEvent;
 
   // Check if we're in a PDF viewer
   const pdfViewer = document.querySelector('div.aLF-aPX[role="dialog"]');
-  if (!pdfViewer) return;
+  if (!pdfViewer) {
+    console.log('No PDF viewer found, ignoring copy event');
+    return;
+  }
+
+  // Check if copy trigger is enabled
+  try {
+    const result = await chrome.storage.sync.get(['phrasebe_copy_trigger_enabled']);
+    const copyTriggerEnabled = result['phrasebe_copy_trigger_enabled'];
+
+    console.log('Copy trigger setting value:', copyTriggerEnabled);
+
+    // If setting is explicitly false, disable copy trigger
+    if (copyTriggerEnabled === false) {
+      console.log('Copy trigger is disabled, ignoring PDF copy event');
+      return;
+    }
+
+    // For any other value (true, undefined, null), proceed with copy trigger
+    console.log('Copy trigger is enabled, proceeding with copy event');
+  } catch (error) {
+    console.error('Failed to check copy trigger setting:', error);
+    // On error, default to enabled
+    console.log('Error checking copy trigger setting, defaulting to enabled');
+  }
 
   // Get copied text from clipboard
   const copiedText = clipboardEvent.clipboardData?.getData('text/plain')?.trim();
@@ -1790,14 +1859,19 @@ const handlePDFCopyEvent = async (event: Event): Promise<void> => {
 // Add copy event listeners to PDF viewer
 const addPDFCopyListeners = (): void => {
   const pdfViewer = document.querySelector('div.aLF-aPX[role="dialog"]');
-  if (!pdfViewer) return;
+  if (!pdfViewer) {
+    console.log('No PDF viewer found for adding copy listeners');
+    return;
+  }
+
+  console.log('PDF viewer found, adding copy listeners to:', pdfViewer);
 
   // Remove existing listeners to avoid duplicates
   pdfViewer.removeEventListener('copy', handlePDFCopyEvent as EventListener);
 
   // Add copy event listener
   pdfViewer.addEventListener('copy', handlePDFCopyEvent as EventListener);
-  console.log('PDF copy listeners added');
+  console.log('PDF copy listeners added successfully');
 };
 
 // Start monitoring for PDF viewers opening dynamically
@@ -1845,20 +1919,21 @@ const initializeExtension = async (): Promise<void> => {
     hasSelectionChanged = true;
   });
 
-  // Handle keyboard shortcuts
-  chrome.commands.onCommand.addListener((command) => {
-    console.log('Command received:', command);
-    if (command === 'open-translate-box') {
-      handleTextSelection();
-    }
-  });
+  // Note: chrome.commands is not available in content scripts
+  // Keyboard shortcuts are handled in background script
 
-  // Initialize Chrome Extension keyboard commands handler
+  // Initialize Chrome Extension message handler
   if (chrome.runtime && chrome.runtime.onMessage) {
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       console.log('Message received:', message);
+
       if (message.action === 'openTranslateBox') {
         console.log('Opening translate box via keyboard shortcut');
+        setTimeout(() => {
+          handleTextSelection();
+        }, 10);
+      } else if (message.action === 'trigger-translation') {
+        console.log('Triggering translation via keyboard shortcut');
         setTimeout(() => {
           handleTextSelection();
         }, 10);
