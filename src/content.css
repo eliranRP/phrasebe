@@ -741,7 +741,7 @@
   line-height: 1;
 
   /* Interaction */
-  cursor: pointer;
+  cursor: pointer !important;
   user-select: none;
 
   /* Performance */
@@ -864,7 +864,7 @@
   color: #333333;
 
   /* Interaction */
-  cursor: pointer;
+  cursor: pointer !important;
   user-select: none;
   display: flex;
   align-items: center;
@@ -904,7 +904,7 @@
   color: #333333;
 
   /* Interaction */
-  cursor: pointer;
+  cursor: pointer !important;
   user-select: none;
   display: flex;
   align-items: center;
@@ -938,6 +938,12 @@
   gap: 16px;
 }
 
+/* Ensure buttons in suggestion actions show pointer cursor */
+.suggestion-actions .copy-btn,
+.suggestion-actions .disable-site-btn {
+  cursor: pointer !important;
+}
+
 .action-item {
   /* Layout */
   padding: 8px 16px;
@@ -952,7 +958,7 @@
   border: 1px solid transparent;
 
   /* Interaction */
-  cursor: pointer;
+  cursor: pointer !important;
   user-select: none;
 
   /* Performance */

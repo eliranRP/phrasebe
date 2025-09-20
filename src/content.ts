@@ -16,6 +16,11 @@ const CONTENT_STORAGE_KEYS = {
 // Check if translation feature is enabled
 const isTranslationEnabled = async (): Promise<boolean> => {
   try {
+    // Check if extension context is still valid
+    if (!isExtensionContextValid()) {
+      return true; // Default to enabled if context invalid
+    }
+
     const result = await chrome.storage.sync.get([CONTENT_STORAGE_KEYS.TRANSLATION_ENABLED]);
     return result[CONTENT_STORAGE_KEYS.TRANSLATION_ENABLED] !== false; // Default to true
   } catch (error) {
@@ -25,6 +30,40 @@ const isTranslationEnabled = async (): Promise<boolean> => {
 
 // Blacklist storage key
 const BLACKLIST_STORAGE_KEY = 'phrasebe_site_blacklist' as const;
+
+// Check storage usage for debugging
+const checkStorageUsage = async (): Promise<void> => {
+  try {
+    // Check if extension context is still valid
+    if (!isExtensionContextValid()) {
+      return;
+    }
+
+    const result = await chrome.storage.sync.get(null);
+    const totalSize = JSON.stringify(result).length;
+
+    // Check if we're approaching quota limits
+    if (totalSize > 90000) { // 90KB warning (close to 100KB limit)
+      console.warn('Storage usage is high:', totalSize, 'bytes (quota: 100KB)');
+    }
+  } catch (error) {
+    console.error('Failed to check storage usage:', error);
+  }
+};
+
+// Clear blacklist (for debugging/reset purposes)
+const clearBlacklist = async (): Promise<void> => {
+  try {
+    // Check if extension context is still valid
+    if (!isExtensionContextValid()) {
+      return;
+    }
+
+    await chrome.storage.sync.remove([BLACKLIST_STORAGE_KEY]);
+  } catch (error) {
+    console.error('Failed to clear blacklist:', error);
+  }
+};
 
 // Type for blacklist operations
 type BlacklistOperation = {
@@ -40,33 +79,70 @@ const getCurrentDomain = (): string => {
 // Get blacklisted sites from storage
 const getBlacklistedSites = async (): Promise<string[]> => {
   try {
+    // Check if extension context is still valid
+    if (!isExtensionContextValid()) {
+      return [];
+    }
+
     const result = await chrome.storage.sync.get([BLACKLIST_STORAGE_KEY]);
-    return result[BLACKLIST_STORAGE_KEY] || [];
+    const blacklist = result[BLACKLIST_STORAGE_KEY] || [];
+    return blacklist;
   } catch (error) {
     console.error('Failed to get blacklisted sites:', error);
     return [];
   }
 };
 
+// Check if extension context is valid
+const isExtensionContextValid = (): boolean => {
+  try {
+    // Try to access chrome.runtime to check if context is valid
+    return chrome.runtime && chrome.runtime.id !== undefined;
+  } catch (error) {
+    return false;
+  }
+};
+
 // Add site to blacklist
 const addSiteToBlacklist = async (domain: string): Promise<BlacklistOperation> => {
   try {
+    // Check if extension context is still valid
+    if (!isExtensionContextValid()) {
+      const message = `Extension context invalidated. Please reload the page and try again.`;
+      return { success: false, message };
+    }
+
     const blacklist = await getBlacklistedSites();
 
     if (blacklist.includes(domain)) {
       const message = `Site ${domain} is already blacklisted`;
-      console.log(message);
       return { success: false, message };
     }
 
     blacklist.push(domain);
-    await chrome.storage.sync.set({ [BLACKLIST_STORAGE_KEY]: blacklist });
+
+    // Check storage quota before saving
+    const storageData = { [BLACKLIST_STORAGE_KEY]: blacklist };
+    const dataSize = JSON.stringify(storageData).length;
+
+    if (dataSize > 8192) { // 8KB limit per item
+      const message = `Blacklist data too large (${dataSize} bytes). Chrome storage.sync has an 8KB limit per item.`;
+      return { success: false, message };
+    }
+
+    await chrome.storage.sync.set(storageData);
+
     const message = `Site ${domain} added to blacklist successfully`;
-    console.log(message);
     return { success: true, message };
   } catch (error) {
     const message = `Failed to add site ${domain} to blacklist: ${error}`;
     console.error(message);
+
+    // Check if it's a context invalidation error
+    if (error instanceof Error && error.message.includes('Extension context invalidated')) {
+      return { success: false, message: 'Extension context invalidated. Please reload the page and try again.' };
+    }
+
     return { success: false, message };
   }
 };
@@ -86,6 +162,11 @@ const isSiteBlacklisted = async (): Promise<boolean> => {
 // Get user's preferred languages
 const getUserLanguages = async (): Promise<{ source: string; target: string }> => {
   try {
+    // Check if extension context is still valid
+    if (!isExtensionContextValid()) {
+      return { source: 'en', target: 'he' }; // Default to English -> Hebrew
+    }
+
     const result = await chrome.storage.sync.get([
       CONTENT_STORAGE_KEYS.SOURCE_LANGUAGE,
       CONTENT_STORAGE_KEYS.TARGET_LANGUAGE,
@@ -886,10 +967,7 @@ const addSuggestionBoxEventListeners = (box: HTMLDivElement, selectedText: strin
   // Copy button handler
   if (copyBtn) {
     copyBtn.addEventListener('click', () => {
-      const textContent = box?.querySelector('.text-content') as HTMLElement;
-      if (textContent) {
-        navigator.clipboard.writeText(textContent.textContent || '');
-      }
+      handleCopyButtonClick(copyBtn, box);
     });
   }
 
@@ -938,7 +1016,7 @@ const addSuggestionBoxEventListeners = (box: HTMLDivElement, selectedText: strin
       whatsappInput.contentEditable = 'false';
 
       try {
-        const response = await sendPromptToAI(prompt, selectedText);
+        const response = await processTextIntelligently(prompt, selectedText);
         const responseLanguage = await detectLanguage(response);
         const responseDirection = responseLanguage.direction;
 
@@ -1165,22 +1243,210 @@ const showSuggestionBoxForPDFCopy = async (selectedText: string): Promise<void> 
 };
 
 
-// Helper function to send prompt to AI
-const sendPromptToAI = async (prompt: string, context: string): Promise<string> => {
+// Show "Copied!" message next to the clicked button
+const showCopyMessage = (copyBtn: HTMLButtonElement): void => {
+  // Remove existing copy message if any
+  const existingMessage = document.querySelector('.copy-message');
+  if (existingMessage) {
+    existingMessage.remove();
+  }
+
+  // Create copy message
+  const copyMessage = document.createElement('div');
+  copyMessage.className = 'copy-message';
+  copyMessage.textContent = 'Copied!';
+  copyMessage.style.cssText = `
+    position: absolute;
+    top: -35px;
+    left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    background: rgba(255, 255, 255, 0.95);
+    color: #333333;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    z-index: 1000001;
+    opacity: 0;
+    transition: all 0.3s ease;
+    pointer-events: none;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+  `;
+
+  // Position relative to the copy button
+  copyBtn.style.position = 'relative';
+  copyBtn.appendChild(copyMessage);
+
+  // Animate in
+  setTimeout(() => {
+    copyMessage.style.opacity = '1';
+    copyMessage.style.transform = 'translateX(-50%) translateY(0)';
+  }, 10);
+
+  // Remove after 2 seconds
+  setTimeout(() => {
+    copyMessage.style.opacity = '0';
+    copyMessage.style.transform = 'translateX(-50%) translateY(-10px)';
+    setTimeout(() => {
+      if (copyMessage.parentNode) {
+        copyMessage.remove();
+      }
+    }, 300);
+  }, 2000);
+};
+
+// Handle copy button click with visual feedback
+const handleCopyButtonClick = async (copyBtn: HTMLButtonElement, box: HTMLDivElement): Promise<void> => {
+  const textContent = box?.querySelector('.text-content') as HTMLElement;
+  if (!textContent) return;
+
   try {
-    const model = await LanguageModel.create({
-      outputLanguage: "en"
-    });
+    await navigator.clipboard.writeText(textContent.textContent || '');
 
-    const fullPrompt = `Context: ${context}\n\nUser request: ${prompt}\n\nPlease provide a helpful response based on the context. Keep it concise and relevant.`;
-    const response = await model.prompt(fullPrompt);
+    // Store original content
+    const originalHTML = copyBtn.innerHTML;
+    const originalTitle = copyBtn.getAttribute('title');
 
-    return response || 'No response generated';
+    // Show success state
+    copyBtn.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="white"/>
+      </svg>
+    `;
+    copyBtn.setAttribute('title', 'Copied!');
+    copyBtn.style.backgroundColor = '#9B7EDE';
+    copyBtn.style.color = 'white';
+    copyBtn.style.borderColor = '#9B7EDE';
+
+    // Show "Copied!" message
+    showCopyMessage(copyBtn);
+
+    // Restore original state after 2 seconds
+    setTimeout(() => {
+      copyBtn.innerHTML = originalHTML;
+      copyBtn.setAttribute('title', originalTitle || 'Copy translation');
+      copyBtn.style.backgroundColor = '';
+      copyBtn.style.color = '';
+      copyBtn.style.borderColor = '';
+    }, 2000);
+
   } catch (error) {
-    console.error('AI prompt failed:', error);
-    throw new Error('Failed to get AI response');
+    console.error('Failed to copy text:', error);
   }
 };
+
+// Handle language selection change
+const setupLanguageSelectHandler = (languageSelect: HTMLSelectElement, selectedText: string, box: HTMLDivElement): void => {
+  if (!languageSelect) return;
+
+  languageSelect.addEventListener('change', async () => {
+    const selectedLanguage = languageSelect.value;
+    const headerContent = box.querySelector('.header-content') as HTMLElement;
+
+    if (headerContent) {
+      headerContent.innerHTML = `
+        <div class="skeleton-loader"></div>
+      `;
+      headerContent.classList.add('skeleton-state');
+    }
+
+    try {
+      const translation = await translateText(selectedText, 'auto', selectedLanguage);
+      if (headerContent) {
+        headerContent.innerHTML = `
+          <div class="header-text">
+            <div class="text-content" contenteditable="true">${translation}</div>
+          </div>
+        `;
+        headerContent.classList.remove('skeleton-state');
+      }
+    } catch (error) {
+      console.error('Translation failed:', error);
+      if (headerContent) {
+        headerContent.innerHTML = `
+          <div class="header-text">
+            <div class="text-content" contenteditable="true">Translation failed. Please try again.</div>
+          </div>
+        `;
+        headerContent.classList.remove('skeleton-state');
+      }
+    }
+  });
+};
+
+// Handle WhatsApp input functionality
+const setupWhatsAppInputHandlers = (whatsappInput: HTMLElement, whatsappSendBtn: HTMLButtonElement, selectedText: string, box: HTMLDivElement): void => {
+  if (!whatsappInput || !whatsappSendBtn) return;
+
+  // Input event handler
+  whatsappInput.addEventListener('input', () => {
+    const hasText = whatsappInput.textContent && whatsappInput.textContent.trim().length > 0;
+    whatsappSendBtn.style.display = hasText ? 'flex' : 'none';
+
+    // Restore placeholder when text is cleared
+    if (!hasText) {
+      whatsappInput.setAttribute('data-placeholder', 'Enter your own prompt');
+      // Clear any remaining HTML content to ensure :empty works
+      whatsappInput.innerHTML = '';
+    } else {
+      whatsappInput.removeAttribute('data-placeholder');
+    }
+  });
+
+  // Keydown event handler
+  whatsappInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      whatsappSendBtn.click();
+    }
+  });
+
+  // Send button click handler
+  whatsappSendBtn.addEventListener('click', async () => {
+    const prompt = whatsappInput.textContent?.trim();
+    if (!prompt) return;
+
+    const originalContent = whatsappSendBtn.innerHTML;
+    whatsappSendBtn.innerHTML = `<div class="spinner"></div>`;
+    whatsappSendBtn.disabled = true;
+    whatsappInput.contentEditable = 'false';
+
+    try {
+      const response = await processTextIntelligently(prompt, selectedText);
+      const headerContent = box.querySelector('.header-content') as HTMLElement;
+      if (headerContent) {
+        headerContent.innerHTML = `
+          <div class="header-text">
+            <div class="text-content" contenteditable="true">${response}</div>
+          </div>
+        `;
+      }
+
+      whatsappInput.textContent = '';
+      whatsappInput.innerHTML = '';
+      whatsappInput.setAttribute('data-placeholder', 'Enter your own prompt');
+      whatsappSendBtn.style.display = 'none';
+
+    } catch (error) {
+      console.error('AI processing failed:', error);
+      const headerContent = box.querySelector('.header-content') as HTMLElement;
+      if (headerContent) {
+        headerContent.innerHTML = `
+          <div class="header-text">
+            <div class="text-content" contenteditable="true">Error: Failed to process prompt</div>
+          </div>
+        `;
+      }
+    } finally {
+      whatsappSendBtn.innerHTML = originalContent;
+      whatsappSendBtn.disabled = false;
+      whatsappInput.contentEditable = 'true';
+    }
+  });
+};
+
 
 
 // Add PDF copy listeners when PDF viewer opens

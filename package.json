@@ -7,7 +7,7 @@
     "build": "webpack --config webpack.dev.js",
     "build:dev": "webpack --config webpack.dev.js",
     "build:prod": "webpack --config webpack.prod.js",
-    "watch": "webpack --config webpack.dev.js --watch",
+    "watch": "webpack --config webpack.prod.js --watch",
     "watch:dev": "webpack --config webpack.dev.js --watch",
     "clean": "rm -rf dist dist-dev dist-prod",
     "clean:dev": "rm -rf dist-dev",

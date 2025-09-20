@@ -57,8 +57,11 @@ const removeFromBlacklist = async (domain: string): Promise<void> => {
   try {
     const result = await chrome.storage.sync.get(['phrasebe_site_blacklist']);
     const blacklist = result['phrasebe_site_blacklist'] || [];
+
     const updatedBlacklist = blacklist.filter((d: string) => d !== domain);
+
     await chrome.storage.sync.set({ 'phrasebe_site_blacklist': updatedBlacklist });
+
     await loadBlacklistedSites(); // Refresh the display
   } catch (error) {
     console.error('Failed to remove site from blacklist:', error);

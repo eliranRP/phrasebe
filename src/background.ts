@@ -1,5 +1,7 @@
 // PhraseBE Background Script - Clean Implementation
 
+console.log('PhraseBE background script loading...');
+
 // Basic message handling
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('Background received message:', message);
@@ -19,17 +21,25 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 // Handle keyboard shortcuts
-chrome.commands.onCommand.addListener((command) => {
-  console.log('Command received:', command);
+if (chrome.commands && chrome.commands.onCommand) {
+  chrome.commands.onCommand.addListener((command) => {
+    console.log('Command received:', command);
 
-  if (command === 'open-translate-box') {
-    // Send message to active tab to trigger translation
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (tabs[0]?.id) {
-        chrome.tabs.sendMessage(tabs[0].id, {
-          action: 'trigger-translation'
-        });
-      }
-    });
-  }
-});
+    if (command === 'open-translate-box') {
+      // Send message to active tab to trigger translation
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs[0]?.id) {
+          chrome.tabs.sendMessage(tabs[0].id, {
+            action: 'trigger-translation'
+          }).catch((error) => {
+            console.error('Failed to send message to tab:', error);
+          });
+        }
+      });
+    }
+  });
+} else {
+  console.warn('chrome.commands.onCommand is not available');
+}
+
+console.log('PhraseBE background script loaded successfully');

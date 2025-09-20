@@ -29,7 +29,7 @@
       "run_at": "document_end"
     }
   ],
-  "permissions": ["storage"],
+  "permissions": ["storage", "tabs"],
   "host_permissions": ["https://*/*", "http://*/*"],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self';"
@@ -39,5 +39,14 @@
       "resources": ["assets/icons/papaer_airplane.png"],
       "matches": ["<all_urls>"]
     }
-  ]
+  ],
+  "commands": {
+    "open-translate-box": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+T",
+        "mac": "Command+Shift+T"
+      },
+      "description": "Open translation box"
+    }
+  }
 }
