@@ -385,6 +385,13 @@
   transition: all 0.2s ease;
 }
 
+.phrasebe-suggestion-box.long-text {
+  min-width: 370px;
+  max-width: 500px;
+  min-height: 220px;
+  max-height: 500px;
+}
+
 .suggestion-header {
   /* Layout */
   display: flex;
@@ -460,14 +467,168 @@
   max-height: 200px;
 
   /* Typography */
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 400;
-  color: #333333;
-  line-height: 1.4;
+  color: #374151;
+  line-height: 1.5;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  letter-spacing: 0.01em;
 
   /* Scrollbar styling */
   scrollbar-width: thin;
   scrollbar-color: #9B7EDE transparent;
+}
+
+.header-text.long-text {
+  max-height: 300px;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.header-text .text-content {
+  margin: 0;
+  padding: 0;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+}
+
+.header-text .text-content p {
+  margin: 0 0 6px 0;
+  padding: 0;
+  line-height: inherit;
+}
+
+.header-text .text-content p:last-child {
+  margin-bottom: 0;
+}
+
+.header-text .text-content br {
+  line-height: inherit;
+}
+
+.header-text .text-content .number {
+  font-weight: bold;
+  color: #1976d2;
+}
+
+.header-text .text-content .currency {
+  font-weight: bold;
+  color: #388e3c;
+}
+
+.header-text .text-content .date {
+  color: #7b1fa2;
+  font-weight: 500;
+}
+
+.header-text .text-content .highlight {
+  background-color: #fff3cd;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+/* Enhanced formatting preservation styles */
+.header-text .text-content strong,
+.header-text .text-content b {
+  font-weight: bold;
+}
+
+.header-text .text-content em,
+.header-text .text-content i {
+  font-style: italic;
+}
+
+.header-text .text-content u {
+  text-decoration: underline;
+}
+
+.header-text .text-content h1,
+.header-text .text-content h2,
+.header-text .text-content h3,
+.header-text .text-content h4,
+.header-text .text-content h5,
+.header-text .text-content h6 {
+  font-weight: bold;
+  margin: 8px 0 4px 0;
+}
+
+.header-text .text-content h1 {
+  font-size: 1.5em;
+}
+
+.header-text .text-content h2 {
+  font-size: 1.3em;
+}
+
+.header-text .text-content h3 {
+  font-size: 1.2em;
+}
+
+.header-text .text-content h4 {
+  font-size: 1.1em;
+}
+
+.header-text .text-content h5 {
+  font-size: 1.05em;
+}
+
+.header-text .text-content h6 {
+  font-size: 1em;
+}
+
+.header-text .text-content ul,
+.header-text .text-content ol {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.header-text .text-content li {
+  margin: 2px 0;
+}
+
+.header-text .text-content blockquote {
+  margin: 8px 0;
+  padding-left: 16px;
+  border-left: 3px solid #ddd;
+  font-style: italic;
+}
+
+.header-text .text-content pre {
+  background-color: #f5f5f5;
+  padding: 8px;
+  border-radius: 4px;
+  font-family: monospace;
+  white-space: pre-wrap;
+  margin: 8px 0;
+}
+
+.header-text .text-content code {
+  background-color: #f5f5f5;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 0.9em;
+}
+
+.header-text .text-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 8px 0;
+}
+
+.header-text .text-content th,
+.header-text .text-content td {
+  border: 1px solid #ddd;
+  padding: 4px 8px;
+  text-align: left;
+}
+
+.header-text .text-content th {
+  background-color: #f5f5f5;
+  font-weight: bold;
 }
 
 .header-text::-webkit-scrollbar {

@@ -600,6 +600,136 @@ const isGmail = (): boolean => {
   return window.location.hostname.includes('mail.google.com');
 };
 
+// Gmail PDF viewer detection
+const isGmailPDFViewer = (): boolean => {
+  const isGmailSite = isGmail();
+  const pdfViewer = document.querySelector('div.aLF-aPX[role="dialog"]');
+  const hasPDFViewer = pdfViewer !== null;
+
+  console.log('PDF Viewer Detection:', {
+    isGmailSite,
+    hasPDFViewer,
+    pdfViewer: pdfViewer ? 'Found' : 'Not found',
+    url: window.location.href
+  });
+
+  return isGmailSite && hasPDFViewer;
+};
+
+// Add event listeners to PDF viewer elements
+const addPDFViewerListeners = (): void => {
+  const pdfViewer = document.querySelector('div.aLF-aPX[role="dialog"]');
+  if (pdfViewer) {
+    console.log('Adding event listeners to PDF viewer');
+
+    // Remove existing listeners to avoid duplicates
+    pdfViewer.removeEventListener('mouseup', handleTextSelection);
+    pdfViewer.removeEventListener('keyup', handleTextSelection);
+    pdfViewer.removeEventListener('selectionchange', handleTextSelection);
+
+    // Add new listeners
+    pdfViewer.addEventListener('mouseup', handleTextSelection);
+    pdfViewer.addEventListener('keyup', handleTextSelection);
+    pdfViewer.addEventListener('selectionchange', handleTextSelection);
+
+    // Also listen on the document container within the PDF viewer
+    const documentContainer = pdfViewer.querySelector('.aLF-aPX-aPF-aPH');
+    if (documentContainer) {
+      console.log('Adding event listeners to PDF document container');
+
+      // Remove existing listeners to avoid duplicates
+      documentContainer.removeEventListener('mouseup', handleTextSelection);
+      documentContainer.removeEventListener('keyup', handleTextSelection);
+      documentContainer.removeEventListener('selectionchange', handleTextSelection);
+
+      // Add new listeners
+      documentContainer.addEventListener('mouseup', handleTextSelection);
+      documentContainer.addEventListener('keyup', handleTextSelection);
+      documentContainer.addEventListener('selectionchange', handleTextSelection);
+    }
+
+    // Also add listeners to individual text elements
+    const textElements = pdfViewer.querySelectorAll('.aLF-aPX-aPF-aPE-a1J-Ji');
+    console.log('Found PDF text elements:', textElements.length);
+
+    textElements.forEach((element, index) => {
+      console.log(`PDF text element ${index}:`, element);
+      console.log(`Element ${index} textContent:`, element.textContent);
+      console.log(`Element ${index} innerHTML:`, element.innerHTML);
+
+      element.addEventListener('mouseup', handleTextSelection);
+      element.addEventListener('keyup', handleTextSelection);
+
+      // Add click handler for easier triggering
+      element.addEventListener('click', (e) => {
+        console.log('PDF text element clicked:', element);
+        console.log('Element textContent:', element.textContent);
+        console.log('Element innerHTML:', element.innerHTML);
+
+        // Try to get text from the element or its children
+        let textContent = element.textContent?.trim();
+
+        // If no direct text content, look for text in child elements
+        if (!textContent || textContent.length === 0) {
+          const textNodes = Array.from(element.childNodes).filter(node =>
+            node.nodeType === Node.TEXT_NODE && node.textContent?.trim()
+          );
+          if (textNodes.length > 0) {
+            textContent = textNodes.map(node => node.textContent?.trim()).join(' ').trim();
+          }
+        }
+
+        // If still no text, look for text in all descendants
+        if (!textContent || textContent.length === 0) {
+          const allTextElements = element.querySelectorAll('*');
+          const textParts = Array.from(allTextElements)
+            .map(el => el.textContent?.trim())
+            .filter(text => text && text.length > 0);
+          if (textParts.length > 0) {
+            textContent = textParts.join(' ').trim();
+          }
+        }
+
+        console.log('Final text content:', textContent);
+
+        if (textContent && textContent.length > 0) {
+          console.log('Triggering translation box for clicked text:', textContent);
+          showSuggestionBox(textContent);
+        } else {
+          console.log('No text content found in clicked element');
+        }
+      });
+    });
+
+    // Also add a general click handler to the entire PDF viewer to catch any clicks
+    pdfViewer.addEventListener('click', (e) => {
+      console.log('PDF viewer clicked:', e.target);
+      const target = e.target as Element;
+
+      // Look for any text content in the clicked element or its parents
+      let textContent = target.textContent?.trim();
+      if (!textContent || textContent.length === 0) {
+        // Check parent elements
+        let parent = target.parentElement;
+        while (parent && parent !== pdfViewer) {
+          textContent = parent.textContent?.trim();
+          if (textContent && textContent.length > 0) {
+            break;
+          }
+          parent = parent.parentElement;
+        }
+      }
+
+      console.log('PDF viewer click text content:', textContent);
+
+      if (textContent && textContent.length > 0) {
+        console.log('Triggering translation box from PDF viewer click:', textContent);
+        showSuggestionBox(textContent);
+      }
+    });
+  }
+};
+
 // Gmail compose contenteditable detection - focus-based
 const getGmailComposeDiv = (): HTMLElement | null => {
   // First, check if there's a currently focused contenteditable element
@@ -866,9 +996,46 @@ const getLanguageCode = (language: string): string => {
   return 'en';
 };
 
+// Format text using Prompt API to get properly formatted HTML
+const formatTextWithPromptAPI = async (text: string, targetLanguage: string = 'en'): Promise<string> => {
+  try {
+    const prompt = `Please format the following text for better readability with proper line breaks and structure. 
+
+Requirements:
+- Add line breaks where appropriate for better readability
+- Preserve numbered lists and bullet points
+- Keep the original structure and formatting
+- Make the text more readable and well-organized
+- Return only the formatted plain text, no HTML tags, no explanations
+
+Text to format:
+${text}`;
+
+    // Use the existing LanguageModel for formatting with dynamic output language
+    const model = await LanguageModel.create({
+      outputLanguage: targetLanguage // Use the target language dynamically
+    });
+    const response = await model.prompt(prompt);
+
+    // Strip any HTML tags that might be returned
+    const cleanText = (response || text).replace(/<[^>]*>/g, '');
+    return cleanText;
+  } catch (error) {
+    console.warn('Failed to format text with Prompt API, using fallback:', error);
+    return formatTextForDisplay(text);
+  }
+};
+
+// Simple fallback formatting (only used when AI formatting fails)
+const formatTextForDisplay = (text: string): string => {
+  // Simple line break preservation - return plain text
+  return text.replace(/\n/g, '\n');
+};
+
 const createSuggestionBox = async (selectedText: string, position: { x: number; y: number }): Promise<HTMLDivElement> => {
   const box = document.createElement('div');
-  box.className = 'phrasebe-suggestion-box';
+  const isLongText = selectedText.length > 200;
+  box.className = `phrasebe-suggestion-box ${isLongText ? 'long-text' : ''}`;
 
   // Detect language and direction
   const { language, direction } = await detectLanguage(selectedText);
@@ -971,6 +1138,9 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
   const range = selection.getRangeAt(0);
   const rect = range.getBoundingClientRect();
 
+  // Get plain text for translation
+  const selectedTextForTranslation = selection.toString().trim();
+
   // Remove existing suggestion box
   if (suggestionBox) {
     suggestionBox.remove();
@@ -995,8 +1165,8 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
     };
   }
 
-  // Create and show new suggestion box
-  suggestionBox = await createSuggestionBox(selectedText, position);
+  // Create and show new suggestion box with plain text (will be formatted after translation)
+  suggestionBox = await createSuggestionBox(selectedTextForTranslation, position);
 
   document.body.appendChild(suggestionBox);
 
@@ -1157,9 +1327,22 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
         // Replace skeleton loader with actual translation
         const headerContent = suggestionBox.querySelector('.header-content') as HTMLElement;
         if (headerContent) {
+          const isLongText = translatedText.length > 200;
+
+          // Format the translated text using Prompt API
+          let formattedTranslation;
+          try {
+            formattedTranslation = await formatTextWithPromptAPI(translatedText, targetLanguage);
+          } catch (formatError) {
+            console.warn('AI formatting failed, using fallback:', formatError);
+            formattedTranslation = formatTextForDisplay(translatedText);
+          }
+
           headerContent.innerHTML = `
             <div class="header-title">Translation (${detectedLanguage} → ${getLanguageName(targetLanguage)})</div>
-            <div class="header-text" dir="${outputDirection}">${translatedText}</div>
+            <div class="header-text ${isLongText ? 'long-text' : ''}" dir="${outputDirection}">
+              <div class="text-content">${formattedTranslation.replace(/\n/g, '<br>')}</div>
+            </div>
           `;
         }
 
@@ -1180,7 +1363,9 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
         if (headerContent) {
           headerContent.innerHTML = `
             <div class="header-title">Translation Failed</div>
-            <div class="header-text">Unable to translate the selected text</div>
+            <div class="header-text">
+              <div class="text-content">Unable to translate the selected text</div>
+            </div>
           `;
         }
 
@@ -1211,9 +1396,25 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
         if (suggestionBox && headerContent) {
           const originalDirection = originalDetectedLanguage.toLowerCase().includes('hebrew') ||
             originalDetectedLanguage.toLowerCase().includes('arabic') ? 'rtl' : 'ltr';
+          const isLongText = selectedText.length > 200;
+
+          // Format the original text using Prompt API
+          let formattedOriginal;
+          try {
+            // Determine the language code for the original text
+            const originalLanguageCode = originalDetectedLanguage.toLowerCase().includes('hebrew') ? 'he' :
+              originalDetectedLanguage.toLowerCase().includes('arabic') ? 'ar' : 'en';
+            formattedOriginal = await formatTextWithPromptAPI(selectedText, originalLanguageCode);
+          } catch (formatError) {
+            console.warn('AI formatting failed, using fallback:', formatError);
+            formattedOriginal = formatTextForDisplay(selectedText);
+          }
+
           headerContent.innerHTML = `
             <div class="header-title">Original Text (${originalDetectedLanguage})</div>
-            <div class="header-text" dir="${originalDirection}">${selectedText}</div>
+            <div class="header-text ${isLongText ? 'long-text' : ''}" dir="${originalDirection}">
+              <div class="text-content">${formattedOriginal.replace(/\n/g, '<br>')}</div>
+            </div>
           `;
         }
         return; // Don't proceed with translation
@@ -1264,9 +1465,22 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
         // Update the suggestion box with new translation
         if (suggestionBox && headerContent) {
           const outputDirection = targetLanguageCode === 'he' || targetLanguageCode === 'ar' ? 'rtl' : 'ltr';
+          const isLongText = translatedText.length > 200;
+
+          // Format the translated text using Prompt API
+          let formattedTranslation;
+          try {
+            formattedTranslation = await formatTextWithPromptAPI(translatedText, targetLanguageCode);
+          } catch (formatError) {
+            console.warn('AI formatting failed, using fallback:', formatError);
+            formattedTranslation = formatTextForDisplay(translatedText);
+          }
+
           headerContent.innerHTML = `
             <div class="header-title">Translation (${sourceLanguage} → ${targetLanguageName})</div>
-            <div class="header-text" dir="${outputDirection}">${translatedText}</div>
+            <div class="header-text ${isLongText ? 'long-text' : ''}" dir="${outputDirection}">
+              <div class="text-content">${formattedTranslation.replace(/\n/g, '<br>')}</div>
+            </div>
           `;
         }
 
@@ -1280,7 +1494,9 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
         if (suggestionBox && headerContent) {
           headerContent.innerHTML = `
             <div class="header-title">Translation Failed</div>
-            <div class="header-text">Unable to translate the selected text</div>
+            <div class="header-text">
+              <div class="text-content">Unable to translate the selected text</div>
+            </div>
           `;
         }
 
@@ -1494,7 +1710,22 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
 
         // Update the suggestion box with the AI response
         if (suggestionBox && headerText) {
-          headerText.textContent = aiResponse;
+          const isLongText = aiResponse.length > 200;
+
+          // Format the AI response using Prompt API
+          let formattedResponse;
+          try {
+            // Determine the language code for the AI response
+            const responseLanguageCode = responseLanguage.toLowerCase().includes('hebrew') ? 'he' :
+              responseLanguage.toLowerCase().includes('arabic') ? 'ar' : 'en';
+            formattedResponse = await formatTextWithPromptAPI(aiResponse, responseLanguageCode);
+          } catch (formatError) {
+            console.warn('AI formatting failed, using fallback:', formatError);
+            formattedResponse = formatTextForDisplay(aiResponse);
+          }
+
+          headerText.innerHTML = `<div class="text-content">${formattedResponse.replace(/\n/g, '<br>')}</div>`;
+          headerText.className = `header-text ${isLongText ? 'long-text' : ''}`;
           headerText.setAttribute('dir', responseDirection);
 
           // Update the dropdown to show the detected language of the AI response
@@ -1514,7 +1745,7 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
         console.error('AI processing failed:', error);
         // Show error in the suggestion box
         if (suggestionBox && headerText) {
-          headerText.textContent = 'Error processing your request. Please try again.';
+          headerText.innerHTML = '<div class="text-content">Error processing your request. Please try again.</div>';
           headerText.setAttribute('dir', 'ltr'); // Error messages are always LTR
         }
       } finally {
@@ -1581,7 +1812,22 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
 
         // Update the suggestion box with the AI response
         if (suggestionBox && headerText) {
-          headerText.textContent = aiResponse;
+          const isLongText = aiResponse.length > 200;
+
+          // Format the AI response using Prompt API
+          let formattedResponse;
+          try {
+            // Determine the language code for the AI response
+            const responseLanguageCode = responseLanguage.toLowerCase().includes('hebrew') ? 'he' :
+              responseLanguage.toLowerCase().includes('arabic') ? 'ar' : 'en';
+            formattedResponse = await formatTextWithPromptAPI(aiResponse, responseLanguageCode);
+          } catch (formatError) {
+            console.warn('AI formatting failed, using fallback:', formatError);
+            formattedResponse = formatTextForDisplay(aiResponse);
+          }
+
+          headerText.innerHTML = `<div class="text-content">${formattedResponse.replace(/\n/g, '<br>')}</div>`;
+          headerText.className = `header-text ${isLongText ? 'long-text' : ''}`;
           headerText.setAttribute('dir', responseDirection);
 
           // Update the dropdown to show the detected language of the AI response
@@ -1603,7 +1849,7 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
         console.error('AI processing failed:', error);
         // Show error in the suggestion box
         if (suggestionBox && headerText) {
-          headerText.textContent = 'Error processing your request. Please try again.';
+          headerText.innerHTML = '<div class="text-content">Error processing your request. Please try again.</div>';
           headerText.setAttribute('dir', 'ltr'); // Error messages are always LTR
         }
       } finally {
@@ -1643,6 +1889,7 @@ const hideSuggestionBox = (): void => {
       lastSelectedText = selection.toString().trim();
       hasSelectionChanged = false; // Reset selection change flag
       console.log('Tracked last selected text:', lastSelectedText);
+      console.log('Reset hasSelectionChanged to false');
     }
 
     suggestionBox.remove();
@@ -1656,15 +1903,21 @@ const hideSuggestionBox = (): void => {
 };
 
 const handleTextSelection = async (): Promise<void> => {
+  console.log('handleTextSelection called');
+
   // Check if translation feature is enabled
   const translationEnabled = await isTranslationEnabled();
+  console.log('Translation enabled:', translationEnabled);
   if (!translationEnabled) {
+    console.log('Translation disabled, skipping');
     return; // Don't show suggestion box if translation is disabled
   }
 
   // Check if current site is blacklisted
   const siteBlacklisted = await isSiteBlacklisted();
+  console.log('Site blacklisted:', siteBlacklisted);
   if (siteBlacklisted) {
+    console.log('Site blacklisted, skipping');
     return; // Don't show suggestion box if site is blacklisted
   }
 
@@ -1690,31 +1943,134 @@ const handleTextSelection = async (): Promise<void> => {
   }
 
   const selection = window.getSelection();
+  console.log('Selection object:', selection);
+  console.log('Selection text:', selection ? selection.toString() : 'No selection');
 
   // If no selection or empty selection, hide box and clear timeout
   if (!selection || selection.toString().trim().length === 0) {
+    console.log('No selection or empty selection');
     // Clear any pending timeout
     if (selectionTimeout) {
       clearTimeout(selectionTimeout);
       selectionTimeout = null;
     }
     hideSuggestionBox();
-    hasSelectionChanged = true; // Mark that selection has changed (to empty)
+    hasSelectionChanged = false; // Reset selection change flag when selection is cleared
     lastSelectedText = null; // Clear last selected text when selection is empty
     return;
   }
 
   const selectedText = selection.toString().trim();
+  console.log('Selected text:', selectedText);
+
   if (selectedText.length === 0) {
+    console.log('Selected text is empty after trim');
     // Clear any pending timeout
     if (selectionTimeout) {
       clearTimeout(selectionTimeout);
       selectionTimeout = null;
     }
     hideSuggestionBox();
+    hasSelectionChanged = false; // Reset selection change flag when selection is cleared
     lastSelectedText = null; // Clear last selected text when selection is empty
     return;
   }
+
+  // Special handling for Gmail PDF viewer
+  if (isGmailPDFViewer()) {
+    console.log('Gmail PDF viewer detected, selected text:', selectedText);
+
+    // For PDF viewer, we need to handle collapsed selections differently
+    if (selection.isCollapsed) {
+      console.log('Collapsed selection in PDF viewer, checking for text content');
+
+      // Try to get text from the clicked element
+      const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+      if (range) {
+        const container = range.commonAncestorContainer;
+        const clickedElement = container.nodeType === Node.TEXT_NODE
+          ? container.parentElement
+          : container as Element;
+
+        console.log('Clicked element:', clickedElement);
+
+        // Check if we clicked on a PDF text element
+        const pdfTextElement = clickedElement?.closest('.aLF-aPX-aPF-aPE-a1J-Ji');
+        if (pdfTextElement) {
+          console.log('PDF text element found:', pdfTextElement);
+          console.log('PDF text element innerHTML:', pdfTextElement.innerHTML);
+
+          // Try multiple methods to extract text
+          let textContent = pdfTextElement.textContent?.trim();
+
+          // If no direct text content, look for text in child elements
+          if (!textContent || textContent.length === 0) {
+            const textNodes = Array.from(pdfTextElement.childNodes).filter(node =>
+              node.nodeType === Node.TEXT_NODE && node.textContent?.trim()
+            );
+            if (textNodes.length > 0) {
+              textContent = textNodes.map(node => node.textContent?.trim()).join(' ').trim();
+            }
+          }
+
+          // If still no text, look for text in all descendants
+          if (!textContent || textContent.length === 0) {
+            const allTextElements = pdfTextElement.querySelectorAll('*');
+            const textParts = Array.from(allTextElements)
+              .map(el => el.textContent?.trim())
+              .filter(text => text && text.length > 0);
+            if (textParts.length > 0) {
+              textContent = textParts.join(' ').trim();
+            }
+          }
+
+          console.log('PDF text element found with content:', textContent);
+
+          if (textContent && textContent.length > 0) {
+            // Use the text content as if it was selected
+            console.log('Using PDF text content as selection:', textContent);
+            await showSuggestionBox(textContent);
+            return;
+          }
+        }
+      }
+
+      console.log('No valid PDF text found for collapsed selection');
+      return;
+    }
+
+    // Check if the selection is from PDF text elements (for non-collapsed selections)
+    const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+    if (range) {
+      const container = range.commonAncestorContainer;
+      const pdfTextElement = container.nodeType === Node.TEXT_NODE
+        ? container.parentElement
+        : container as Element;
+
+      // Check if the selection is from PDF text elements
+      const isPDFText = pdfTextElement && (
+        pdfTextElement.classList.contains('aLF-aPX-aPF-aPE-a1J-Ji') ||
+        pdfTextElement.closest('.aLF-aPX-aPF-aPE-a1J-Ji') !== null ||
+        pdfTextElement.closest('div.aLF-aPX[role="dialog"]') !== null
+      );
+
+      if (!isPDFText) {
+        console.log('Selection not from PDF text, ignoring');
+        return;
+      }
+
+      console.log('PDF text selection confirmed, proceeding with translation box');
+    }
+  }
+
+  // Check if this is the same text that was selected when the box was last closed
+  // AND the selection hasn't changed (user didn't unselect and reselect)
+  console.log('Selection check:', {
+    lastSelectedText,
+    selectedText,
+    hasSelectionChanged,
+    sameText: lastSelectedText === selectedText
+  });
 
   // Check if this is the same text that was selected when the box was last closed
   // AND the selection hasn't changed (user didn't unselect and reselect)
@@ -1725,6 +2081,7 @@ const handleTextSelection = async (): Promise<void> => {
 
   // Mark that we have a new selection
   hasSelectionChanged = true;
+  console.log('Marked hasSelectionChanged as true for new selection');
 
   // Don't recreate the box if it already exists and user is interacting with it
   if (suggestionBox && document.body.contains(suggestionBox)) {
@@ -1737,29 +2094,79 @@ const handleTextSelection = async (): Promise<void> => {
   }
 
   // Set 2.5-second delay
+  console.log('Setting 2.5 second timeout for selection:', selectedText);
   selectionTimeout = setTimeout(async () => {
+    console.log('Timeout triggered, checking selection...');
     // Double-check that selection still exists and hasn't been cleared
     const currentSelection = window.getSelection();
     if (!currentSelection || currentSelection.toString().trim().length === 0) {
+      console.log('Selection was cleared during timeout, not showing box');
       return; // Selection was cleared, don't show box
     }
 
+    console.log('Selection still exists, showing suggestion box');
     // Clear the last selected text since we're showing the box for new text
-    lastSelectedText = null;
-    hasSelectionChanged = false; // Reset selection change flag
+    lastSelectedText = selectedText; // Store the current selected text
     await showSuggestionBox(selectedText);
   }, 2500);
 };
 
 // Initialize extension
 const initializeExtension = async (): Promise<void> => {
+  console.log('Initializing extension on:', window.location.href);
+
   // Add text selection listener for all websites
-  document.addEventListener('mouseup', handleTextSelection);
-  document.addEventListener('keyup', handleTextSelection);
+  document.addEventListener('mouseup', (e) => {
+    console.log('Mouseup event triggered on:', e.target);
+    handleTextSelection();
+  });
+  document.addEventListener('keyup', (e) => {
+    console.log('Keyup event triggered on:', e.target);
+    handleTextSelection();
+  });
 
   // Add additional listeners for better text selection handling
   document.addEventListener('input', handleTextSelection); // Handle text deletion/typing
-  document.addEventListener('selectionchange', handleTextSelection); // Handle selection changes
+  document.addEventListener('selectionchange', (e) => {
+    console.log('Selection change event triggered');
+    handleTextSelection();
+  }); // Handle selection changes
+
+  // Special handling for Gmail PDF viewer
+  if (isGmailPDFViewer()) {
+    console.log('Gmail PDF viewer detected at startup, adding specific event listeners');
+    addPDFViewerListeners();
+  } else {
+    console.log('No Gmail PDF viewer detected at startup');
+  }
+
+  // Watch for dynamically loaded PDF viewers
+  if (isGmail()) {
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((node) => {
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            const element = node as Element;
+            // Check if a PDF viewer was added
+            if (element.querySelector && element.querySelector('div.aLF-aPX[role="dialog"]')) {
+              console.log('PDF viewer dynamically loaded, adding listeners');
+              addPDFViewerListeners();
+            }
+            // Check if the added node itself is a PDF viewer
+            if (element.classList && element.classList.contains('aLF-aPX') && element.getAttribute('role') === 'dialog') {
+              console.log('PDF viewer element added, adding listeners');
+              addPDFViewerListeners();
+            }
+          }
+        });
+      });
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+  }
 
   // Enhanced keyboard selection handling
   document.addEventListener('keydown', (e) => {

@@ -149,6 +149,19 @@ declare global {
   const Rewriter: RewriterConstructor;
   const Writer: WriterConstructor;
 
+  // Chrome AI API
+  interface ChromeAI {
+    getLanguageModel(): Promise<LanguageModel>;
+  }
+
+  interface LanguageModel {
+    prompt(text: string): Promise<string>;
+  }
+
+  const chrome: typeof chrome & {
+    ai: ChromeAI;
+  };
+
   // Task classification types
   type TaskType = 'rewrite' | 'write' | 'translate' | 'summarize' | 'unknown';
 
