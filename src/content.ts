@@ -360,11 +360,15 @@ IMPORTANT: For suggestedOptions, select ONLY ONE value from these options:
 // Rewriter API integration
 const createRewriter = async (options?: RewriterOptions): Promise<Rewriter> => {
   const availability = await Rewriter.availability();
-
+  
   if (availability === 'unavailable') {
     throw new Error('Rewriter API is not available');
   }
-
+  
+  if (availability === 'downloadable') {
+    throw new Error('Rewriter model needs to be downloaded with user gesture. Please try again after the model is downloaded.');
+  }
+  
   return await Rewriter.create({
     tone: options?.tone || 'as-is',
     format: options?.format || 'as-is',
@@ -382,14 +386,18 @@ const createRewriter = async (options?: RewriterOptions): Promise<Rewriter> => {
 // Writer API integration  
 const createWriter = async (options?: WriterOptions): Promise<Writer> => {
   const availability = await Writer.availability();
-
+  
   if (availability === 'unavailable') {
     throw new Error('Writer API is not available');
   }
-
+  
+  if (availability === 'downloadable') {
+    throw new Error('Writer model needs to be downloaded with user gesture. Please try again after the model is downloaded.');
+  }
+  
   return await Writer.create({
     tone: options?.tone || 'as-is',
-    format: options?.format || 'as-is',
+    format: options?.format || 'as-is', 
     length: options?.length || 'as-is',
     sharedContext: options?.sharedContext,
     signal: options?.signal,
@@ -401,12 +409,45 @@ const createWriter = async (options?: WriterOptions): Promise<Writer> => {
   });
 };
 
+// Trigger model downloads with user gesture
+const triggerModelDownloads = async (): Promise<void> => {
+  try {
+    // Check Rewriter availability
+    const rewriterAvailability = await Rewriter.availability();
+    if (rewriterAvailability === 'downloadable') {
+      console.log('Triggering Rewriter model download...');
+      await Rewriter.create({
+        monitor(m) {
+          m.addEventListener('downloadprogress', (e) => {
+            console.log(`Rewriter model downloaded ${e.loaded * 100}%`);
+          });
+        },
+      });
+    }
+    
+    // Check Writer availability
+    const writerAvailability = await Writer.availability();
+    if (writerAvailability === 'downloadable') {
+      console.log('Triggering Writer model download...');
+      await Writer.create({
+        monitor(m) {
+          m.addEventListener('downloadprogress', (e) => {
+            console.log(`Writer model downloaded ${e.loaded * 100}%`);
+          });
+        },
+      });
+    }
+  } catch (error) {
+    console.warn('Model download trigger failed:', error);
+  }
+};
+
 // Validate and sanitize classification options
 const validateClassificationOptions = (options: any) => {
   const validTones = ['more-formal', 'as-is', 'more-casual'];
   const validFormats = ['as-is', 'markdown', 'plain-text'];
   const validLengths = ['shorter', 'as-is', 'longer'];
-  
+
   return {
     tone: validTones.includes(options?.tone) ? options.tone : 'as-is',
     format: validFormats.includes(options?.format) ? options.format : 'as-is',
@@ -427,17 +468,17 @@ const processTextIntelligently = async (userPrompt: string, contextText?: string
         if (!contextText) {
           throw new Error('Rewrite task requires context text');
         }
-        
+
         const validatedOptions = validateClassificationOptions(classification.suggestedOptions);
         console.log('Validated rewrite options:', validatedOptions);
-        
+
         const rewriter = await createRewriter({
           tone: validatedOptions.tone as any,
           format: validatedOptions.format as any,
           length: validatedOptions.length as any,
           sharedContext: `User wants to rewrite this text: "${userPrompt}"`,
         });
-        
+
         const rewrittenText = await rewriter.rewrite(contextText, {
           context: userPrompt,
           tone: validatedOptions.tone as any,
@@ -449,14 +490,14 @@ const processTextIntelligently = async (userPrompt: string, contextText?: string
       case 'write':
         const validatedWriteOptions = validateClassificationOptions(classification.suggestedOptions);
         console.log('Validated write options:', validatedWriteOptions);
-        
+
         const writer = await createWriter({
           tone: validatedWriteOptions.tone as any,
           format: validatedWriteOptions.format as any,
           length: validatedWriteOptions.length as any,
           sharedContext: contextText ? `Context: "${contextText}"` : undefined,
         });
-        
+
         const writtenText = await writer.write(userPrompt, {
           context: contextText,
           tone: validatedWriteOptions.tone as any,
@@ -1361,6 +1402,9 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
       const customPrompt = whatsappInput.textContent?.trim() || '';
       if (!customPrompt) return;
 
+      // Trigger model downloads with user gesture
+      await triggerModelDownloads();
+
       // Get the current translated text from the suggestion box
       const headerText = suggestionBox?.querySelector('.header-text') as HTMLElement;
       const translatedText = headerText ? headerText.textContent || '' : selectedText;
@@ -1444,6 +1488,9 @@ const showSuggestionBox = async (selectedText: string): Promise<void> => {
     whatsappSendBtn.addEventListener('click', async () => {
       const customPrompt = whatsappInput?.textContent?.trim() || '';
       if (!customPrompt) return;
+
+      // Trigger model downloads with user gesture
+      await triggerModelDownloads();
 
       // Get the current translated text from the suggestion box
       const headerText = suggestionBox?.querySelector('.header-text') as HTMLElement;
