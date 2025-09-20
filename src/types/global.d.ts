@@ -82,5 +82,87 @@ declare module '*.svg' {
   export default value;
 }
 
+// Chrome AI APIs type definitions
+declare global {
+  interface RewriterOptions {
+    tone?: 'more-formal' | 'as-is' | 'more-casual';
+    format?: 'as-is' | 'markdown' | 'plain-text';
+    length?: 'shorter' | 'as-is' | 'longer';
+    sharedContext?: string;
+    signal?: AbortSignal;
+    monitor?: (m: RewriterMonitor) => void;
+  }
+
+  interface RewriterContext {
+    context?: string;
+    tone?: 'more-formal' | 'as-is' | 'more-casual';
+    signal?: AbortSignal;
+  }
+
+  interface RewriterMonitor {
+    addEventListener(type: 'downloadprogress', listener: (event: { loaded: number; total: number }) => void): void;
+  }
+
+  interface Rewriter {
+    rewrite(text: string, context?: RewriterContext): Promise<string>;
+    rewriteStreaming(text: string, context?: RewriterContext): AsyncIterable<string>;
+    destroy(): void;
+    addEventListener(type: 'downloadprogress', listener: (event: { loaded: number; total: number }) => void): void;
+  }
+
+  interface WriterOptions {
+    tone?: 'more-formal' | 'as-is' | 'more-casual';
+    format?: 'as-is' | 'markdown' | 'plain-text';
+    length?: 'shorter' | 'as-is' | 'longer';
+    sharedContext?: string;
+    signal?: AbortSignal;
+    monitor?: (m: WriterMonitor) => void;
+  }
+
+  interface WriterContext {
+    context?: string;
+    tone?: 'more-formal' | 'as-is' | 'more-casual';
+    signal?: AbortSignal;
+  }
+
+  interface WriterMonitor {
+    addEventListener(type: 'downloadprogress', listener: (event: { loaded: number; total: number }) => void): void;
+  }
+
+  interface Writer {
+    write(prompt: string, context?: WriterContext): Promise<string>;
+    writeStreaming(prompt: string, context?: WriterContext): AsyncIterable<string>;
+    destroy(): void;
+    addEventListener(type: 'downloadprogress', listener: (event: { loaded: number; total: number }) => void): void;
+  }
+
+  interface RewriterConstructor {
+    availability(): Promise<'available' | 'downloadable' | 'unavailable'>;
+    create(options?: RewriterOptions): Promise<Rewriter>;
+  }
+
+  interface WriterConstructor {
+    availability(): Promise<'available' | 'downloadable' | 'unavailable'>;
+    create(options?: WriterOptions): Promise<Writer>;
+  }
+
+  const Rewriter: RewriterConstructor;
+  const Writer: WriterConstructor;
+
+  // Task classification types
+  type TaskType = 'rewrite' | 'write' | 'translate' | 'summarize' | 'unknown';
+
+  interface TaskClassification {
+    taskType: TaskType;
+    confidence: number;
+    reasoning: string;
+    suggestedOptions?: {
+      tone?: string;
+      format?: string;
+      length?: string;
+    };
+  }
+}
+
 // Export to make this a module
 export {};
